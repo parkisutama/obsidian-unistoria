@@ -1,0 +1,50 @@
+name: Release
+
+# Runs only when a tag is pushed. The tag must equal the plugin version (no "v" prefix), for example
+# 0.2.0, and the same version must be in package.json, manifest.json, and versions.json
+# (node scripts/sync-version.mjs 0.2.0). Nothing here creates a tag or pushes anything.
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Check, build, publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".node-version"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Tag matches the plugin version
+        run: |
+          manifest=$(node -p "require('./manifest.json').version")
+          pkg=$(node -p "require('./package.json').version")
+          mapped=$(node -p "require('./versions.json')['${GITHUB_REF_NAME}'] ?? ''")
+          echo "tag=${GITHUB_REF_NAME} manifest=${manifest} package=${pkg} versions.json=${mapped}"
+          test "${GITHUB_REF_NAME}" = "${manifest}"
+          test "${GITHUB_REF_NAME}" = "${pkg}"
+          test -n "${mapped}"
+
+      - run: pnpm run check:ci
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/main.js dist/manifest.json dist/styles.css \
+            LICENSE THIRD_PARTY_NOTICES.md \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
