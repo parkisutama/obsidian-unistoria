@@ -1,0 +1,20 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+coverage
+
+# Local environment (vault copy target)
+.env
+
+# Tool caches
+.rumdl_cache
+
+# Editors and OS
+.vscode
+.idea
+.DS_Store
+
+# Local agent settings
+.claude/settings.local.json

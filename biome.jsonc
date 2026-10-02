@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		// The native acceptance scripts are fragments evaluated inside Obsidian (a bare async arrow
+		// function plus a prelude that supplies their globals), so linters cannot judge them as modules.
+		"includes": ["**", "!pnpm-lock.yaml", "!scripts/native/*.js"]
+	},
+	"formatter": {
+		"indentStyle": "tab",
+		"lineWidth": 100
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended"
+		}
+	}
+}

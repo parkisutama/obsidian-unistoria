@@ -1,0 +1,12 @@
+[global]
+
+# MD013: prose uses semantic line breaks, not a column limit.
+disable = ["MD013"]
+
+exclude = [".git", ".github", "node_modules", "dist", "coverage", ".claude"]
+
+respect-gitignore = true
+
+# Documents carry `title` in frontmatter and repeat it as the single H1.
+[MD025]
+front-matter-title = ""

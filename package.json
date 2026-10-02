@@ -1,0 +1,56 @@
+{
+	"name": "obsidian-unistoria",
+	"version": "0.1.0",
+	"description": "Folder-scoped threaded conversations stored as one Markdown file per message.",
+	"private": true,
+	"type": "module",
+	"packageManager": "pnpm@12.8.1",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "node esbuild.config.mjs production",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check",
+		"lint:obsidian": "eslint src manifest.json LICENSE",
+		"lint:md": "rumdl check .",
+		"fix": "biome check --write && rumdl check --fix .",
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"verify:artifacts": "node scripts/verify-artifacts.mjs",
+		"version:sync": "node scripts/sync-version.mjs",
+		"native": "node scripts/native/run.mjs",
+		"check": "pnpm run typecheck && pnpm run lint && pnpm run lint:obsidian && pnpm run lint:md && pnpm run test",
+		"check:ci": "pnpm run typecheck && pnpm run lint && pnpm run lint:obsidian && pnpm run lint:md && pnpm run test:coverage && pnpm run build && pnpm run verify:artifacts"
+	},
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"conversation",
+		"threads",
+		"markdown"
+	],
+	"author": "Parkis Utama",
+	"license": "GPL-3.0-only",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/parkisutama/obsidian-unistoria"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.14",
+		"@eslint/json": "0.14.0",
+		"@types/node": "^24.19.0",
+		"@typescript-eslint/parser": "^8.71.0",
+		"@vitest/coverage-v8": "^5.0.3",
+		"esbuild": "^0.28.2",
+		"eslint": "^9.39.5",
+		"eslint-plugin-obsidianmd": "^0.4.2",
+		"happy-dom": "^20.14.5",
+		"obsidian": "1.13.1",
+		"rumdl": "^0.2.78",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.71.0",
+		"vitest": "^5.0.3"
+	}
+}
