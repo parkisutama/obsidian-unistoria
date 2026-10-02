@@ -1,0 +1,6 @@
+/* Shared tokens for Unistoria views. Derive every value from Obsidian's own variables so themes
+   and light/dark mode keep working. */
+
+.unistoria-view {
+	--unistoria-thread-indent: var(--size-4-6);
+}

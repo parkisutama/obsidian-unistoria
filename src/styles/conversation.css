@@ -1,0 +1,473 @@
+/* Conversation view: topic list, thread, and composer dock.
+   Colors and spacing come from Obsidian's variables so every theme and both modes keep working. */
+
+.view-content.unistoria-view {
+	display: grid;
+	grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+	height: 100%;
+	padding: 0;
+	overflow: hidden;
+}
+
+/* The hidden topic list is removed from the grid, so the main pane must be the only column;
+   keeping a zero-width first column would squeeze the main pane into it. */
+.unistoria-view.is-nav-hidden {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+/* --- topic list ---------------------------------------------------------------------------- */
+
+.unistoria-nav {
+	overflow-y: auto;
+	padding: var(--size-4-3);
+	border-right: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.unistoria-view.is-nav-hidden .unistoria-nav {
+	display: none;
+}
+
+.unistoria-nav-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+	margin-bottom: var(--size-4-3);
+}
+
+.unistoria-space-name {
+	margin: var(--size-4-3) 0 var(--size-4-1);
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	overflow-wrap: anywhere;
+}
+
+.unistoria-topic-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Obsidian styles every `button`, and themes add their own rules. The extra class in these selectors
+   makes the intended look win without `!important`. */
+.unistoria-nav .unistoria-topic-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	width: 100%;
+	height: auto;
+	min-height: var(--input-height);
+	padding: var(--size-4-1) var(--size-4-2);
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	text-align: left;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.unistoria-nav .unistoria-topic-item:hover,
+.unistoria-nav .unistoria-topic-item[aria-current="true"] {
+	background: var(--background-modifier-hover);
+}
+
+.unistoria-main .unistoria-list-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	min-width: max-content;
+	height: var(--input-height);
+	padding: 0 var(--size-4-2);
+	flex: none;
+}
+
+.unistoria-list-toggle-icon {
+	display: inline-flex;
+	width: var(--icon-s, 16px);
+	height: var(--icon-s, 16px);
+}
+
+.unistoria-nav .unistoria-topic-item[aria-current="true"] {
+	font-weight: var(--font-semibold);
+}
+
+.unistoria-state {
+	flex: none;
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background: var(--background-modifier-border);
+}
+
+.unistoria-state.is-open {
+	color: var(--text-success);
+}
+
+.unistoria-state.is-invalid {
+	color: var(--text-error);
+}
+
+/* --- main pane ----------------------------------------------------------------------------- */
+
+.unistoria-main {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.unistoria-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--size-4-4) var(--size-4-6);
+}
+
+.unistoria-topic-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-3);
+}
+
+.unistoria-topic-header h2 {
+	flex: 1 1 12em;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.unistoria-topic-tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.unistoria-reveal {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-closed-note,
+.unistoria-muted {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-topic-context {
+	margin-bottom: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-left: 3px solid var(--background-modifier-border);
+}
+
+.unistoria-integrity {
+	margin-bottom: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-error);
+	border-radius: var(--radius-m);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-integrity summary {
+	cursor: pointer;
+	color: var(--text-error);
+}
+
+/* --- thread -------------------------------------------------------------------------------- */
+
+/* The thread is a nested list: reset list styling, then indent replies. */
+.unistoria-thread,
+.unistoria-children,
+.unistoria-node {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.unistoria-children {
+	margin-left: var(--unistoria-thread-indent, var(--size-4-6));
+	padding-left: var(--size-4-3);
+	border-left: 2px solid var(--background-modifier-border);
+}
+
+/* Announcements for screen readers; present in the accessibility tree, invisible on screen. */
+.unistoria-live {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.unistoria-message {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+}
+
+.unistoria-message.is-draft,
+.unistoria-message.is-removed,
+.unistoria-message.is-orphan {
+	border-style: dashed;
+	opacity: 0.8;
+}
+
+.unistoria-message-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-author {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.unistoria-badge {
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-border);
+}
+
+.unistoria-message-body {
+	margin: var(--size-4-1) 0;
+	overflow-wrap: anywhere;
+}
+
+.unistoria-message-body > :first-child {
+	margin-top: 0;
+}
+
+.unistoria-message-body > :last-child {
+	margin-bottom: 0;
+}
+
+.unistoria-message-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.unistoria-message-actions button:not(.clickable-icon) {
+	height: auto;
+	padding: 0 var(--size-4-2);
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-message-actions button:not(.clickable-icon):hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.unistoria-add,
+.unistoria-drafts {
+	margin-top: var(--size-4-4);
+}
+
+.unistoria-drafts ul {
+	margin: 0;
+	padding-left: var(--size-4-4);
+}
+
+.unistoria-drafts li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: center;
+}
+
+.unistoria-empty {
+	padding: var(--size-4-6) 0;
+	color: var(--text-muted);
+}
+
+/* --- composer dock -------------------------------------------------------------------------- */
+
+.unistoria-composer-dock {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 auto;
+	height: 45%;
+	min-height: 220px;
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+}
+
+.unistoria-composer-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-4);
+}
+
+.unistoria-composer-actions {
+	display: flex;
+	gap: var(--size-4-2);
+}
+
+.unistoria-composer-note {
+	padding: 0 var(--size-4-4) var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.unistoria-composer-editor {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* A leaf mounted outside a split is not sized by the split's flex layout; give it the whole host
+   (same approach as Unimian's quick preview). */
+.unistoria-composer-editor > .workspace-leaf {
+	flex: 1 1 auto;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+}
+
+/* The embedded leaf's own header carries the mode toggle and menu; match it to the dock so the
+   editor reads as one surface (technique from Unimian's quick preview). */
+.view-content.unistoria-view .unistoria-composer-editor .workspace-leaf .view-header {
+	background-color: var(--background-primary);
+	border-bottom: none;
+}
+
+/* Page Preview's hover popover sits below modals by default; keep it above the dock while an
+   editor is open. */
+body .unistoria-composer-editor .hover-popover {
+	z-index: calc(var(--layer-modal, 70) + 5);
+}
+
+/* --- headings inside messages ---------------------------------------------------------------- */
+
+/* Message and topic text is the user's own Markdown, and it often starts with a large heading
+   (typed by hand or added by a formatter). Inside a card those headings are scaled down so a card
+   reads as a message, not as a page. The text itself is never changed. */
+.unistoria-message-body h1,
+.unistoria-topic-context h1 {
+	font-size: var(--font-ui-large, 1.25em);
+	margin: 0 0 var(--size-4-1);
+}
+
+.unistoria-message-body h2,
+.unistoria-topic-context h2 {
+	font-size: var(--font-ui-medium, 1.1em);
+	margin: 0 0 var(--size-4-1);
+}
+
+.unistoria-message-body h3,
+.unistoria-message-body h4,
+.unistoria-message-body h5,
+.unistoria-message-body h6,
+.unistoria-topic-context h3,
+.unistoria-topic-context h4,
+.unistoria-topic-context h5,
+.unistoria-topic-context h6 {
+	font-size: var(--font-ui-small, 1em);
+	margin: 0 0 var(--size-4-1);
+}
+
+.unistoria-message-body > p,
+.unistoria-topic-context > p {
+	margin-block: var(--size-4-1);
+}
+
+/* --- composer dock with the editor in its own pane ----------------------------------------- */
+
+.unistoria-composer-dock.is-split {
+	height: auto;
+	min-height: 0;
+	padding-bottom: var(--size-4-2);
+}
+
+/* --- centered reading column ------------------------------------------------------------------- */
+
+/* The conversation reads like a note: one centered column with a comfortable line length instead of
+   text spread across the whole pane. Nested replies indent inside it. */
+.unistoria-column {
+	width: 100%;
+	max-width: max(var(--file-line-width, 700px), 780px);
+	margin-inline: auto;
+}
+
+/* --- excerpts ("Read more") ------------------------------------------------------------------- */
+
+.unistoria-message-body.is-clamped,
+.unistoria-topic-context.is-clamped {
+	position: relative;
+	max-height: 320px;
+	overflow: hidden;
+}
+
+/* Fade the cut-off text into the card so it reads as "more below", not as a broken layout. */
+.unistoria-message-body.is-clamped::after,
+.unistoria-topic-context.is-clamped::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
+	height: 4em;
+	background: linear-gradient(to bottom, transparent, var(--background-primary));
+	pointer-events: none;
+}
+
+.unistoria-main .unistoria-read-more {
+	display: block;
+	height: auto;
+	margin: var(--size-4-1) 0;
+	padding: 0 var(--size-4-2);
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-accent);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-main .unistoria-read-more:hover {
+	color: var(--text-accent-hover);
+	text-decoration: underline;
+}
+
+/* --- rendered Markdown ----------------------------------------------------------------------- */
+
+.unistoria-markdown {
+	overflow-wrap: anywhere;
+}
+
+.unistoria-markdown .callout,
+.unistoria-markdown blockquote,
+.unistoria-markdown pre {
+	margin-block: var(--size-4-2);
+}
+
+.unistoria-markdown a.internal-link,
+.unistoria-markdown a.tag {
+	cursor: pointer;
+}
+
+/* Checkboxes that cannot be changed from here (a mismatch with the source) look inactive. */
+.unistoria-markdown input.task-list-item-checkbox:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
