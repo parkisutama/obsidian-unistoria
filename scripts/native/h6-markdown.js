@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // Rendered Markdown in the conversation: Obsidian's own renderer for callouts, quotes, code, and
 // embeds; internal links that open, Page Preview on hover, tags that search, and task checkboxes
 // that change the file. Also the centered reading column.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // License notice prepended to the distributed plugin files.
 // Notices for adapted code live in THIRD_PARTY_NOTICES.md; keep both in sync.
 

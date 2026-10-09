@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 import { describe, expect, it } from "vitest";
 import { toggleBodyTask } from "../src/platform/vault/tasks";
 import { createVaultIO, ensureFolder } from "../src/platform/vault/vault-io";

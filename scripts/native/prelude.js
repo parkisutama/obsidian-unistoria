@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // Helpers shared by the native acceptance scripts. The runner pastes this file in front of each
 // script, inside Obsidian, so it uses Obsidian's global `app`.
 
