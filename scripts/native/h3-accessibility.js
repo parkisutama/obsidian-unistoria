@@ -11,7 +11,9 @@ async (h) => {
 		const t = await h.topic("S", "A11y");
 		const a = await h.message(t, "a", { at: 1, body: "Root message" });
 		await h.message(t, "b", { parent: a, at: 2, body: "A reply" });
-		await h.message(t, "c", { parent: a, at: 3, body: "Another reply" });
+		const c = await h.message(t, "c", { parent: a, at: 3, body: "Another reply" });
+		// A reply to a reply, as an older or hand-written file may hold (ADR-008).
+		await h.message(t, "d", { parent: c, at: 4, body: "A reply to a reply" });
 		await h.refresh();
 		await P.activateView(t.folder);
 		await h.sleep(1800);
@@ -49,8 +51,9 @@ async (h) => {
 			Boolean(root.querySelector("ul.unistoria-thread > li > article")),
 		);
 		h.check(
-			"replies are a nested list",
-			Boolean(root.querySelector("li > ul.unistoria-children > li > article")),
+			"the topic page lists only the message that starts the thread",
+			root.querySelectorAll(".unistoria-scroll article.unistoria-message").length === 1,
+			root.querySelectorAll(".unistoria-scroll article.unistoria-message").length,
 		);
 		const articles = [...root.querySelectorAll("article.unistoria-message")];
 		h.check(
@@ -67,38 +70,160 @@ async (h) => {
 			root.querySelector(".unistoria-live")?.getAttribute("aria-live") === "polite",
 		);
 
-		// --- thread collapse ------------------------------------------------------------------------
-		const toggle = root.querySelector(".unistoria-thread-toggle");
+		// --- topic list --------------------------------------------------------------------------------
+		const visible = (el) => Boolean(el) && el.offsetParent !== null && el.offsetWidth > 0;
+		const nav = root.querySelector("nav.unistoria-nav");
+		const listToggle = () => nav.querySelector("button[data-focus-key='list-toggle']");
 		h.check(
-			"the thread toggle exposes its state",
-			toggle?.getAttribute("aria-expanded") === "true" &&
-				Boolean(toggle?.getAttribute("aria-controls")),
-			toggle?.outerHTML.slice(0, 160),
+			"the topic list holds its own show and hide button",
+			visible(listToggle()) && listToggle().getAttribute("aria-expanded") === "true",
 		);
+		const navWidth = nav.offsetWidth;
+		listToggle().focus();
+		listToggle().click();
+		await h.sleep(300);
 		h.check(
-			"the toggle points at the replies list",
-			Boolean(root.querySelector(`#${CSS.escape(toggle.getAttribute("aria-controls"))}`)),
+			"hidden, the topic list is a narrow rail that still shows the button",
+			visible(listToggle()) &&
+				listToggle().getAttribute("aria-expanded") === "false" &&
+				nav.offsetWidth < 80 &&
+				nav.querySelector(".unistoria-topic-item") === null,
+			`${navWidth} -> ${nav.offsetWidth}`,
 		);
+		h.check("focus stays on the button", document.activeElement === listToggle());
+		h.check(
+			"the main pane keeps its width beside the rail",
+			root.querySelector(".unistoria-scroll").offsetWidth > 200,
+			root.querySelector(".unistoria-scroll").offsetWidth,
+		);
+		listToggle().click();
+		await h.sleep(300);
+		h.check(
+			"the topic list comes back",
+			nav.offsetWidth === navWidth && nav.querySelector(".unistoria-topic-item") !== null,
+			nav.offsetWidth,
+		);
+		const title = root.querySelector(".unistoria-topic-header h2").getBoundingClientRect();
+		const tools = root.querySelector(".unistoria-topic-tools").getBoundingClientRect();
+		h.check("the topic title has its own line above the controls", tools.top >= title.bottom);
+
+		// --- thread panel ------------------------------------------------------------------------------
+		const panel = root.querySelector("aside.unistoria-thread-panel");
+		const toggle = root.querySelector(".unistoria-thread-open");
+		h.check(
+			"the thread control states the replies and its state",
+			/^3 replies/.test(toggle?.textContent ?? "") &&
+				toggle?.getAttribute("aria-expanded") === "false" &&
+				toggle?.getAttribute("aria-controls") === panel?.id,
+			toggle?.outerHTML.slice(0, 200),
+		);
+		h.check("the thread panel is closed at first", !visible(panel));
 		toggle.focus();
 		toggle.click();
 		await h.sleep(900);
 		const afterToggle = document.activeElement;
 		h.check(
-			"focus stays on the thread toggle after it re-renders",
+			"focus stays on the thread control after it re-renders",
 			key(afterToggle)?.startsWith("thread:"),
 			key(afterToggle),
 		);
+		h.check("the open state is exposed", afterToggle?.getAttribute("aria-expanded") === "true");
 		h.check(
-			"the collapsed state is exposed",
-			afterToggle?.getAttribute("aria-expanded") === "false",
+			"the thread panel is shown beside the topic page",
+			visible(panel) &&
+				panel.offsetWidth > 200 &&
+				visible(root.querySelector(".unistoria-scroll")) &&
+				panel.getBoundingClientRect().left >=
+					root.querySelector(".unistoria-scroll").getBoundingClientRect().right - 1,
+			`${panel.offsetWidth}px`,
 		);
 		h.check(
-			"collapsing is announced",
-			/hidden/.test(root.querySelector(".unistoria-live").textContent),
+			"opening is announced",
+			/Thread opened/.test(root.querySelector(".unistoria-live").textContent),
 			root.querySelector(".unistoria-live").textContent,
 		);
-		afterToggle.click();
+		const replies = [...panel.querySelectorAll("ul.unistoria-replies > li > article")];
+		h.check(
+			"replies are one flat list in the panel, deeper ones included, in time order",
+			replies.length === 3 &&
+				replies.map((el) => el.getAttribute("data-path").split("/").pop()).join() ===
+					"b.md,c.md,d.md",
+			replies.map((el) => el.getAttribute("data-path").split("/").pop()).join(),
+		);
+		const quote = replies[2]?.querySelector("button.unistoria-quote");
+		h.check(
+			"a reply to a reply quotes the message it answers; a direct reply has no quote",
+			quote?.querySelector(".unistoria-quote-text")?.textContent === "Another reply" &&
+				/^In reply to the message from /.test(quote?.getAttribute("aria-label") ?? "") &&
+				replies[0]?.querySelector(".unistoria-quote") === null,
+			quote?.outerHTML.slice(0, 200),
+		);
+		quote.click();
+		await h.sleep(200);
+		h.check(
+			"selecting the quote moves to the quoted message",
+			document.activeElement === replies[1] && replies[1].classList.contains("is-flash"),
+			document.activeElement?.getAttribute("data-path"),
+		);
+		h.check(
+			"a reply cannot start a thread",
+			panel.querySelectorAll("ul.unistoria-replies .unistoria-thread-open").length === 0,
+		);
+		h.check(
+			"every reply can be answered",
+			replies.every((el) => el.querySelector("button[data-focus-key^='panel:reply:']")),
+		);
+		h.check(
+			"the panel has one reply button for the thread",
+			panel.querySelectorAll("button[data-focus-key='panel:reply']").length === 1,
+		);
+		const keys = [...root.querySelectorAll("[data-focus-key]")].map(key);
+		h.check(
+			"focus keys stay unique while a message is shown twice",
+			new Set(keys).size === keys.length,
+			keys.filter((k, i) => keys.indexOf(k) !== i).join(),
+		);
+
+		const full = () => root.querySelector("button[data-focus-key='thread-full']");
+		full().focus();
+		full().click();
 		await h.sleep(900);
+		h.check(
+			"expanded, the thread takes the whole view",
+			!visible(root.querySelector(".unistoria-scroll")) &&
+				!visible(nav) &&
+				panel.offsetWidth >= root.offsetWidth - 2,
+			`${panel.offsetWidth}/${root.offsetWidth}`,
+		);
+		h.check(
+			"the expanded thread names its topic",
+			panel.querySelector(".unistoria-thread-crumb")?.textContent === "A11y",
+		);
+		h.check(
+			"focus stays on the expand button and its state is exposed",
+			document.activeElement === full() && full().getAttribute("aria-pressed") === "true",
+			key(document.activeElement),
+		);
+		full().click();
+		await h.sleep(900);
+		h.check(
+			"the thread returns beside the topic page",
+			visible(root.querySelector(".unistoria-scroll")) && visible(nav),
+		);
+		root.querySelector("button[data-focus-key='thread-close']").click();
+		await h.sleep(900);
+		h.check("closing hides the panel", !visible(panel));
+		h.check(
+			"focus returns to the thread control of the message",
+			key(document.activeElement)?.startsWith("thread:") &&
+				document.activeElement.getAttribute("aria-expanded") === "false",
+			key(document.activeElement),
+		);
+		h.check(
+			"closing is announced",
+			/Thread closed/.test(root.querySelector(".unistoria-live").textContent),
+			root.querySelector(".unistoria-live").textContent,
+		);
 
 		// --- focus survives a re-render caused by the vault -----------------------------------------
 		const reply = root.querySelector("button[data-focus-key^='reply:']");
@@ -145,6 +270,43 @@ async (h) => {
 			"focus returns to the control that opened the composer",
 			key(document.activeElement) === openerKey,
 			`${openerKey} -> ${key(document.activeElement)}`,
+		);
+		h.check(
+			"replying opens the thread the reply belongs to",
+			visible(root.querySelector("aside.unistoria-thread-panel")),
+		);
+		const drafts = [...h.P.index.topic(t.folder).thread.drafts];
+		h.check(
+			"the new reply points to the message that starts the thread",
+			drafts.length === 1 && drafts[0].parentPath === a,
+			drafts.map((n) => n.parentPath).join(),
+		);
+
+		// --- answering a reply ----------------------------------------------------------------------
+		const replyToC = [
+			...root.querySelectorAll("aside.unistoria-thread-panel button[data-focus-key^='panel:reply:']"),
+		].find((b) => key(b).endsWith("/c.md"));
+		replyToC.focus();
+		replyToC.click();
+		await h.sleep(2500);
+		const dock2 = root.querySelector(".unistoria-composer-dock");
+		h.check(
+			"answering a reply opens a composer named after that reply",
+			/^Composer: Reply to the message from /.test(dock2?.getAttribute("aria-label") || ""),
+			dock2?.getAttribute("aria-label"),
+		);
+		const parents = [...h.P.index.topic(t.folder).thread.drafts].map((n) => n.parentPath).sort();
+		h.check(
+			"the answer points to the reply it answers, in the same topic",
+			parents.length === 2 && parents.includes(c) && parents.includes(a),
+			parents.join(),
+		);
+		[...dock2.querySelectorAll("button")].find((b) => b.textContent === "Close").click();
+		await h.sleep(1800);
+		h.check(
+			"focus returns to the reply button in the panel",
+			key(document.activeElement) === `panel:reply:${c}`,
+			key(document.activeElement),
 		);
 	} finally {
 		for (const leaf of app.workspace.getLeavesOfType("unistoria-conversation")) leaf.detach();

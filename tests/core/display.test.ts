@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { parseMessageProps } from "../../src/core/schema/schema";
 import {
-	countReplies,
 	formatShortTime,
 	shownChildren,
 	shownRoots,
+	threadReplies,
+	threadRootOf,
 } from "../../src/core/thread/display";
 import { buildThread, type MessageEntry } from "../../src/core/thread/thread";
 
@@ -54,11 +55,41 @@ describe("normal view", () => {
 		expect(names(shownChildren(a as never, false))).toEqual(["b"]);
 	});
 
-	it("counts the replies a reader can see", () => {
+	it("lists the replies a reader can see as one flat thread, at any depth", () => {
 		const m = model();
-		expect(countReplies(m.nodes.get(`${DIR}/a.md`) as never, false)).toBe(2);
-		expect(countReplies(m.nodes.get(`${DIR}/b.md`) as never, false)).toBe(1);
-		expect(countReplies(m.nodes.get(`${DIR}/c.md`) as never, false)).toBe(0);
+		expect(names(threadReplies(m.nodes.get(`${DIR}/a.md`) as never, false))).toEqual(["b", "c"]);
+		expect(names(threadReplies(m.nodes.get(`${DIR}/b.md`) as never, false))).toEqual(["c"]);
+		expect(threadReplies(m.nodes.get(`${DIR}/c.md`) as never, false)).toEqual([]);
+	});
+
+	it("orders a flat thread by time, not by depth", () => {
+		const m = buildThread([
+			entry("a"),
+			reply("b", "a", { created: "2026-10-01T10:01:00" }),
+			reply("c", "b", { created: "2026-10-01T10:05:00" }),
+			reply("d", "a", { created: "2026-10-01T10:03:00" }),
+		]);
+		expect(names(threadReplies(m.nodes.get(`${DIR}/a.md`) as never, false))).toEqual([
+			"b",
+			"d",
+			"c",
+		]);
+	});
+});
+
+describe("thread root", () => {
+	it("is the top of the parent chain", () => {
+		const m = model();
+		const root = (file: string) =>
+			threadRootOf(m.nodes.get(`${DIR}/${file}.md`) as never, m.nodes).path;
+		expect(root("c")).toBe(`${DIR}/a.md`);
+		expect(root("e")).toBe(`${DIR}/a.md`);
+		expect(root("a")).toBe(`${DIR}/a.md`);
+	});
+
+	it("is the message itself when it is detached", () => {
+		const m = model();
+		expect(threadRootOf(m.nodes.get(`${DIR}/g.md`) as never, m.nodes).path).toBe(`${DIR}/g.md`);
 	});
 });
 
@@ -68,7 +99,7 @@ describe("reveal view", () => {
 		expect(names(shownRoots(m, true))).toEqual(["a", "f", "g"]);
 		const a = m.nodes.get(`${DIR}/a.md`);
 		expect(names(shownChildren(a as never, true))).toEqual(["b", "d"]);
-		expect(countReplies(a as never, true)).toBe(4);
+		expect(names(threadReplies(a as never, true))).toEqual(["b", "c", "d", "e"]);
 	});
 });
 

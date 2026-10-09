@@ -1,5 +1,6 @@
 // H4: render time for a large topic. Creates a topic with many messages in a branching thread
-// (depth up to 12), then times a full render of the conversation view and counts the DOM nodes.
+// (depth up to 12), then times a full render of the topic page and of its largest thread in the
+// panel (ADR-008), and counts the DOM nodes.
 // The numbers are printed as notes; checks only enforce generous upper bounds so a regression
 // that makes the view unusable is caught. Raise the size with the SIZES array to probe further.
 
@@ -56,7 +57,28 @@ async (h) => {
 				worst <= BUDGET_MS[n],
 				`${runs.join(", ")} ms`,
 			);
-			h.check(`topic ${n}: every published message is shown`, cards === n, `${cards}/${n}`);
+			h.check(
+				`topic ${n}: every message that starts a thread is shown`,
+				cards === snap.roots.length,
+				`${cards}/${snap.roots.length}`,
+			);
+
+			// The replies render when a thread opens; time the first thread, which has replies.
+			const opener = [...document.querySelectorAll(".unistoria-thread-open")].find(
+				(b) => b.textContent !== "Open thread",
+			);
+			const threadStart = performance.now();
+			opener.click();
+			for (let i = 0; i < 400 && !document.querySelector(".unistoria-thread-count"); i++)
+				await h.sleep(25);
+			const inPanel = document.querySelectorAll(".unistoria-replies > li > article").length;
+			h.note(`topic ${n} thread`, {
+				renderMs: Math.round(performance.now() - threadStart),
+				replies: inPanel,
+			});
+			h.check(`topic ${n}: the thread panel lists replies`, inPanel > 0, inPanel);
+			document.querySelector("[data-focus-key='thread-close']").click();
+			await h.sleep(400);
 
 			// Autosaving a draft must not rebuild the thread: mark the rendered list, change a draft's
 			// file, and check the same element is still in place afterwards.

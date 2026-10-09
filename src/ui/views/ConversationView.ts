@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-// The conversation view: a topic list on the left, the chosen topic's thread on the right, and a
-// composer dock at the bottom. It renders what the index reports and never edits files itself;
+// The conversation view: a topic list on the left, the chosen topic's messages in the middle, the
+// thread of one message in a panel on the right (ADR-008), and a composer dock at the bottom. It renders what the index reports and never edits files itself;
 // every change goes through the injected platform functions.
 
 import {
@@ -18,13 +18,15 @@ import {
 	type WorkspaceLeaf,
 } from "obsidian";
 import { canReplyTo } from "../../core/lifecycle/lifecycle";
+import { quoteExcerpt } from "../../core/markdown/quote";
 import { countTasks } from "../../core/markdown/tasks";
 import { bodyOf } from "../../core/schema/frontmatter";
 import {
-	countReplies,
 	formatShortTime,
 	shownChildren,
 	shownRoots,
+	threadReplies,
+	threadRootOf,
 } from "../../core/thread/display";
 import type { ThreadNode } from "../../core/thread/thread";
 import { openInTab } from "../../platform/editor/open-file";
@@ -79,11 +81,22 @@ export const EXCERPT_HEIGHT_PX = 320;
 /** Content only slightly over the limit is shown in full: hiding a few lines is not worth a click. */
 const EXCERPT_SLACK_PX = 96;
 
+/** Where a message card is drawn: the topic page, the top of the thread panel, or a reply in it. */
+type Place = "main" | "thread-root" | "reply";
+
+/** Keeps the thread panel's id unique when several conversation views are open. */
+let panelSeq = 0;
+
 export class ConversationView extends ItemView {
 	private topicFolder: string | null = null;
 	private showHidden = false;
 	private topicListHidden = false;
-	private readonly collapsed = new Set<string>();
+	/** The root message whose thread is open in the side panel, by path. */
+	private threadPath: string | null = null;
+	/** The thread panel fills the view, hiding the topic list and the topic page. */
+	private threadFull = false;
+	/** The thread the panel showed last, so its scroll position is kept only for that thread. */
+	private renderedThread: string | null = null;
 	/** Messages (by path) the reader has expanded past their excerpt; kept across re-renders. */
 	private readonly expandedExcerpts = new Set<string>();
 	private excerptObserver: ResizeObserver | null = null;
@@ -93,8 +106,14 @@ export class ConversationView extends ItemView {
 
 	private navEl!: HTMLElement;
 	private mainEl!: HTMLElement;
+	private bodyEl!: HTMLElement;
 	private scrollEl!: HTMLElement;
 	private columnEl!: HTMLElement;
+	private threadEl!: HTMLElement;
+	private threadHeadEl!: HTMLElement;
+	private threadScrollEl!: HTMLElement;
+	private threadColumnEl!: HTMLElement;
+	private dockEl!: HTMLElement;
 	private composer!: Composer;
 	/** Lets Page Preview anchor its popover to this view. */
 	hoverPopover: HoverPopover | null = null;
@@ -138,7 +157,9 @@ export class ConversationView extends ItemView {
 
 	override async setState(state: unknown, result: ViewStateResult): Promise<void> {
 		const next = (state as ViewState | null)?.topic;
-		this.topicFolder = typeof next === "string" ? next : null;
+		const folder = typeof next === "string" ? next : null;
+		if (folder !== this.topicFolder) this.forgetThread();
+		this.topicFolder = folder;
 		await super.setState(state, result);
 		if (this.built) this.scheduleRender(0, true);
 	}
@@ -149,10 +170,20 @@ export class ConversationView extends ItemView {
 		root.addClass("unistoria-view");
 		this.navEl = root.createEl("nav", { cls: "unistoria-nav", attr: { "aria-label": "Topics" } });
 		this.mainEl = root.createDiv({ cls: "unistoria-main" });
-		this.scrollEl = this.mainEl.createDiv({ cls: "unistoria-scroll" });
+		this.bodyEl = this.mainEl.createDiv({ cls: "unistoria-body" });
+		this.scrollEl = this.bodyEl.createDiv({ cls: "unistoria-scroll" });
 		this.columnEl = this.scrollEl.createDiv({ cls: "unistoria-column" });
+		this.threadEl = this.bodyEl.createEl("aside", {
+			cls: "unistoria-thread-panel",
+			attr: { id: `unistoria-thread-panel-${panelSeq++}`, "aria-label": "Thread" },
+		});
+		this.threadHeadEl = this.threadEl.createDiv({ cls: "unistoria-thread-head" });
+		this.threadScrollEl = this.threadEl.createDiv({ cls: "unistoria-thread-scroll" });
+		this.threadColumnEl = this.threadScrollEl.createDiv({ cls: "unistoria-column" });
+		this.threadEl.hide();
 		this.wireMarkdownInteractions();
 		const dock = this.mainEl.createDiv();
+		this.dockEl = dock;
 		this.liveEl = root.createDiv({
 			cls: "unistoria-live",
 			attr: { role: "status", "aria-live": "polite" },
@@ -178,9 +209,10 @@ export class ConversationView extends ItemView {
 			this.app.vault.on("delete", (file) => void this.composer.handleDeleted(file.path)),
 		);
 		this.registerEvent(
-			this.app.vault.on("rename", (file, oldPath) =>
-				this.composer.handleRenamed(oldPath, file.path),
-			),
+			this.app.vault.on("rename", (file, oldPath) => {
+				this.composer.handleRenamed(oldPath, file.path);
+				if (this.threadPath === oldPath) this.threadPath = file.path;
+			}),
 		);
 		this.built = true;
 		this.scheduleRender(0, true);
@@ -199,6 +231,7 @@ export class ConversationView extends ItemView {
 
 	/** Shows a topic, optionally opening the composer on one of its messages. */
 	async showTopic(folder: string, composePath?: string): Promise<void> {
+		if (folder !== this.topicFolder) this.forgetThread();
 		this.topicFolder = folder;
 		this.app.workspace.requestSaveLayout();
 		await this.render();
@@ -234,12 +267,8 @@ export class ConversationView extends ItemView {
 
 	private currentFocusKey(): string | null {
 		const active = this.contentEl.ownerDocument.activeElement;
-		if (!(active instanceof HTMLElement) || !this.mainEl.contains(active)) {
-			return active instanceof HTMLElement && this.navEl.contains(active)
-				? active.getAttribute("data-focus-key")
-				: null;
-		}
-		return this.scrollEl.contains(active) ? active.getAttribute("data-focus-key") : null;
+		if (!(active instanceof HTMLElement) || !this.contentEl.contains(active)) return null;
+		return this.dockEl.contains(active) ? null : active.getAttribute("data-focus-key");
 	}
 
 	private restoreFocus(): void {
@@ -258,7 +287,7 @@ export class ConversationView extends ItemView {
 		const parts: string[] = [
 			this.topicFolder ?? "",
 			String(this.showHidden),
-			[...this.collapsed].sort().join("|"),
+			`${this.threadPath}|${this.threadFull}`,
 		];
 		for (const topic of index.topics()) {
 			parts.push(
@@ -315,21 +344,38 @@ export class ConversationView extends ItemView {
 		this.renderNav();
 
 		const topic = this.topicFolder ? this.deps.index.topic(this.topicFolder) : undefined;
+		const threadRoot = topic ? this.resolveThread(topic) : null;
+		if (!topic) this.forgetThread();
+		const threadScrollTop =
+			threadRoot?.path === this.renderedThread ? this.threadScrollEl.scrollTop : 0;
 		const fragment = document.createDocumentFragment();
 		const holder = createDiv();
-		fragment.appendChild(holder);
+		const threadHolder = createDiv();
+		fragment.append(holder, threadHolder);
 		if (!topic) this.renderEmpty(holder);
-		else await this.renderTopic(holder, topic, child, seq);
+		else {
+			await this.renderTopic(holder, topic, child, seq);
+			if (threadRoot && seq === this.renderSeq)
+				await this.renderThread(threadHolder, threadRoot, topic, child, seq);
+		}
 
 		if (seq !== this.renderSeq || !this.built) return;
 		this.columnEl.empty();
 		while (holder.firstChild) this.columnEl.appendChild(holder.firstChild);
+		this.threadColumnEl.empty();
+		while (threadHolder.firstChild) this.threadColumnEl.appendChild(threadHolder.firstChild);
+		this.renderThreadHead(topic, threadRoot);
+		this.threadEl.toggle(threadRoot !== null);
+		this.contentEl.toggleClass("is-thread-open", threadRoot !== null);
+		this.contentEl.toggleClass("is-thread-full", threadRoot !== null && this.threadFull);
+		this.renderedThread = threadRoot?.path ?? null;
 		// Measure now that the content is attached; the observer takes over for later changes.
 		// All reads first, then all writes, so the browser lays out once instead of once per message.
 		const queued = this.excerptQueue.splice(0);
 		const measured = queued.map((entry) => entry.measure());
 		for (const [i, entry] of queued.entries()) entry.apply(measured[i] ?? false);
 		this.scrollEl.scrollTop = scrollTop;
+		this.threadScrollEl.scrollTop = threadScrollTop;
 		this.restoreFocus();
 		(this.leaf as WorkspaceLeaf & { updateHeader?: () => void }).updateHeader?.();
 	}
@@ -339,6 +385,31 @@ export class ConversationView extends ItemView {
 	private renderNav(): void {
 		const nav = this.navEl;
 		nav.empty();
+		const hidden = this.topicListHidden;
+		const head = nav.createDiv({ cls: "unistoria-nav-head" });
+		const toggle = this.focusable(
+			head.createEl("button", {
+				cls: "clickable-icon unistoria-list-toggle",
+				attr: {
+					"aria-label": hidden ? "Show the topic list" : "Hide the topic list",
+					"aria-expanded": String(!hidden),
+				},
+			}),
+			"list-toggle",
+		);
+		setIcon(toggle, "panel-left");
+		toggle.addEventListener("click", () => {
+			this.topicListHidden = !hidden;
+			this.contentEl.toggleClass("is-nav-hidden", this.topicListHidden);
+			this.renderNav();
+			this.focusKey = "list-toggle";
+			this.restoreFocus();
+			this.announce(this.topicListHidden ? "Topic list hidden" : "Topic list shown");
+		});
+		// Collapsed, the list is a narrow rail that holds only the button that brings it back.
+		if (hidden) return;
+		head.createSpan({ cls: "unistoria-nav-title", text: "Topics" });
+
 		const bar = nav.createDiv({ cls: "unistoria-nav-bar" });
 		const newTopic = this.focusable(
 			bar.createEl("button", { text: "New topic", cls: "mod-cta" }),
@@ -382,6 +453,7 @@ export class ConversationView extends ItemView {
 			});
 			button.createSpan({ cls: "unistoria-topic-name", text: topic.name });
 			button.addEventListener("click", () => {
+				if (topic.folderPath !== this.topicFolder) this.forgetThread();
 				this.topicFolder = topic.folderPath;
 				this.app.workspace.requestSaveLayout();
 				void this.composer.close();
@@ -390,30 +462,7 @@ export class ConversationView extends ItemView {
 		}
 	}
 
-	/** A labelled button that shows or hides the topic list; present in every state of the pane. */
-	private renderTopicListToggle(host: HTMLElement): void {
-		const toggle = this.focusable(
-			host.createEl("button", {
-				cls: "unistoria-list-toggle",
-				attr: {
-					"aria-label": "Show or hide the topic list",
-					"aria-expanded": String(!this.topicListHidden),
-				},
-			}),
-			"list-toggle",
-		);
-		setIcon(toggle.createSpan({ cls: "unistoria-list-toggle-icon" }), "panel-left");
-		toggle.createSpan({ text: "Topics" });
-		toggle.addEventListener("click", () => {
-			this.topicListHidden = !this.topicListHidden;
-			toggle.setAttribute("aria-expanded", String(!this.topicListHidden));
-			this.contentEl.toggleClass("is-nav-hidden", this.topicListHidden);
-			this.announce(this.topicListHidden ? "Topic list hidden" : "Topic list shown");
-		});
-	}
-
 	private renderEmpty(host: HTMLElement): void {
-		this.renderTopicListToggle(host);
 		const box = host.createDiv({ cls: "unistoria-empty" });
 		box.createEl("h3", {
 			text: this.topicFolder ? "This topic no longer exists" : "Choose a topic",
@@ -431,8 +480,7 @@ export class ConversationView extends ItemView {
 		component: Component,
 		seq: number,
 	): Promise<void> {
-		const header = host.createDiv({ cls: "unistoria-topic-header" });
-		this.renderTopicListToggle(header);
+		const header = host.createEl("header", { cls: "unistoria-topic-header" });
 		header.createEl("h2", { text: topic.name });
 
 		const tools = header.createDiv({ cls: "unistoria-topic-tools" });
@@ -492,7 +540,7 @@ export class ConversationView extends ItemView {
 		}
 		for (const root of roots) {
 			if (seq !== this.renderSeq) return;
-			await this.renderNode(thread, root, topic, component, seq);
+			await this.renderMessage(thread, root, topic, component, seq, "main", root);
 		}
 
 		if (roots.length > 0) {
@@ -587,12 +635,12 @@ export class ConversationView extends ItemView {
 		}
 	}
 
-	/** One set of delegated listeners for everything rendered inside the thread. */
+	/** One set of delegated listeners for everything rendered in the topic page and the thread panel. */
 	private wireMarkdownInteractions(): void {
 		const sourceOf = (el: Element) =>
 			el.closest<HTMLElement>("[data-source-path]")?.getAttribute("data-source-path") ?? "";
 
-		this.registerDomEvent(this.scrollEl, "click", (event) => {
+		this.registerDomEvent(this.bodyEl, "click", (event) => {
 			const target = event.target;
 			if (!(target instanceof Element)) return;
 
@@ -613,7 +661,7 @@ export class ConversationView extends ItemView {
 			if (box && !box.disabled) void this.toggleCheckbox(box, sourceOf(box));
 		});
 
-		this.registerDomEvent(this.scrollEl, "mouseover", (event) => {
+		this.registerDomEvent(this.bodyEl, "mouseover", (event) => {
 			const target = event.target;
 			if (!(target instanceof Element)) return;
 			const link = target.closest<HTMLAnchorElement>("a.internal-link");
@@ -707,18 +755,133 @@ export class ConversationView extends ItemView {
 		}
 	}
 
+	// --- thread panel --------------------------------------------------------------------------
+
+	/**
+	 * The message whose thread the panel shows, or null. A thread always starts at a top-level
+	 * message, so a reply resolves to the top of its parent chain. A thread whose root is gone, or
+	 * is hidden in the current view, closes instead of pointing at nothing.
+	 */
+	private resolveThread(topic: TopicSnapshot): ThreadNode | null {
+		if (this.threadPath === null) return null;
+		const node = topic.thread.nodes.get(this.threadPath);
+		const root = node ? threadRootOf(node, topic.thread.nodes) : null;
+		if (!root || (root.hiddenReason !== null && !this.showHidden)) {
+			this.forgetThread();
+			return null;
+		}
+		this.threadPath = root.path;
+		return root;
+	}
+
+	private forgetThread(): void {
+		this.threadPath = null;
+		this.threadFull = false;
+	}
+
+	private showThread(path: string): void {
+		if (this.threadPath === path) return;
+		this.threadPath = path;
+		this.announce("Thread opened");
+		this.scheduleRender(0, true);
+	}
+
+	private closeThread(): void {
+		const path = this.threadPath;
+		if (path === null) return;
+		this.forgetThread();
+		// The panel's own controls disappear with it; focus goes back to the message's thread button.
+		this.focusKey = `thread:${path}`;
+		this.announce("Thread closed");
+		this.scheduleRender(0, true);
+	}
+
+	private renderThreadHead(topic: TopicSnapshot | undefined, root: ThreadNode | null): void {
+		const head = this.threadHeadEl;
+		head.empty();
+		if (!topic || !root) return;
+		const title = head.createDiv({ cls: "unistoria-thread-title" });
+		// Expanded, the topic page is hidden, so the header says which topic the thread belongs to.
+		if (this.threadFull) {
+			title.createSpan({ cls: "unistoria-thread-crumb", text: topic.name });
+			title.createSpan({ cls: "unistoria-thread-sep", text: "›", attr: { "aria-hidden": "true" } });
+		}
+		title.createEl("h3", { text: "Thread" });
+
+		const tools = head.createDiv({ cls: "unistoria-thread-tools" });
+		const full = this.focusable(
+			tools.createEl("button", {
+				cls: "clickable-icon",
+				attr: {
+					"aria-label": this.threadFull
+						? "Show the thread beside the topic"
+						: "Expand the thread to the whole view",
+					"aria-pressed": String(this.threadFull),
+				},
+			}),
+			"thread-full",
+		);
+		setIcon(full, this.threadFull ? "minimize-2" : "maximize-2");
+		full.addEventListener("click", () => {
+			this.threadFull = !this.threadFull;
+			this.focusKey = "thread-full";
+			this.announce(this.threadFull ? "Thread expanded" : "Thread shown beside the topic");
+			this.scheduleRender(0, true);
+		});
+		const close = this.focusable(
+			tools.createEl("button", { cls: "clickable-icon", attr: { "aria-label": "Close thread" } }),
+			"thread-close",
+		);
+		setIcon(close, "x");
+		close.addEventListener("click", () => this.closeThread());
+	}
+
+	/** The thread of one message: the message in full, then every reply below it as one flat list. */
+	private async renderThread(
+		host: HTMLElement,
+		root: ThreadNode,
+		topic: TopicSnapshot,
+		component: Component,
+		seq: number,
+	): Promise<void> {
+		await this.renderMessage(host, root, topic, component, seq, "thread-root", root);
+		const replies = threadReplies(root, this.showHidden);
+		host.createDiv({
+			cls: "unistoria-thread-count",
+			text: replies.length === 0 ? "No replies yet" : describeReplies(replies.length),
+		});
+		const list = host.createEl("ul", {
+			cls: "unistoria-replies",
+			attr: { "aria-label": "Replies" },
+		});
+		for (const reply of replies) {
+			if (seq !== this.renderSeq) return;
+			await this.renderMessage(list, reply, topic, component, seq, "reply", root);
+		}
+		if (canReplyTo(root.props.status) && root.hiddenReason !== "orphan") {
+			const add = host.createDiv({ cls: "unistoria-add" });
+			const button = this.focusable(
+				add.createEl("button", { text: "Reply in thread" }),
+				"panel:reply",
+			);
+			button.addEventListener("click", () => void this.newMessage(topic, root));
+		}
+	}
+
 	// --- messages ------------------------------------------------------------------------------
 
-	private async renderNode(
+	private async renderMessage(
 		parentEl: HTMLElement,
 		node: ThreadNode,
 		topic: TopicSnapshot,
 		component: Component,
 		seq: number,
+		place: Place,
+		threadRoot: ThreadNode,
 	): Promise<void> {
-		const replies = countReplies(node, this.showHidden);
-		const isCollapsed = this.collapsed.has(node.path);
-		const item = parentEl.createEl("li", { cls: "unistoria-node" });
+		const item = parentEl.createEl(place === "thread-root" ? "div" : "li", {
+			cls: "unistoria-node",
+		});
 		const who = node.props.author !== "" ? node.props.author : "unknown author";
 		const label = `Message from ${who}, ${formatShortTime(node.props.created)}`;
 		const card = item.createEl("article", {
@@ -726,6 +889,7 @@ export class ConversationView extends ItemView {
 			attr: { "data-path": node.path, "aria-label": label },
 		});
 		if (node.hiddenReason) card.addClass(`is-${node.hiddenReason}`);
+		if (place === "main" && node.path === this.threadPath) card.addClass("is-thread-open");
 
 		const head = card.createDiv({ cls: "unistoria-message-head" });
 		if (node.props.author !== "")
@@ -738,7 +902,14 @@ export class ConversationView extends ItemView {
 				cls: "unistoria-badge",
 				text: node.props.status === "draft" ? "Unpublished draft" : "Removed",
 			});
+		} else if (place === "reply" && node.hiddenReason === "ancestor") {
+			head.createSpan({ cls: "unistoria-badge", text: "Hidden with its parent" });
 		}
+		// A reply to a reply is listed flat; quote the message it answers so the context is not lost.
+		const parent = node.parentPath ? topic.thread.nodes.get(node.parentPath) : undefined;
+		if (place === "reply" && parent && parent.path !== threadRoot.path)
+			await this.renderQuote(card, node, parent);
+		if (seq !== this.renderSeq) return;
 
 		const body = card.createDiv({ cls: "unistoria-message-body" });
 		const content = body.createDiv({ cls: "unistoria-message-content" });
@@ -750,37 +921,69 @@ export class ConversationView extends ItemView {
 			if (text === "") content.createEl("em", { cls: "unistoria-muted", text: "(empty)" });
 			else await this.renderMarkdown(content, text, node.path, component, source);
 		}
-		this.makeExcerpt(body, content, node.path, label.toLowerCase());
+		// The thread panel is where a message is read in full, so its first message is never cut.
+		if (place !== "thread-root") this.makeExcerpt(body, content, node.path, label.toLowerCase());
 
-		this.renderActions(card, node, topic, replies, isCollapsed, label);
+		this.renderActions(card, node, topic, label, place);
+	}
 
-		if (replies > 0 && !isCollapsed) {
-			const children = item.createEl("ul", {
-				cls: "unistoria-children",
-				attr: { id: this.repliesId(node.path), "aria-label": `Replies to ${label}` },
-			});
-			for (const child of shownChildren(node, this.showHidden)) {
-				if (seq !== this.renderSeq) return;
-				await this.renderNode(children, child, topic, component, seq);
-			}
-		}
+	/**
+	 * A one-line quote of the message a reply answers. Selecting it moves to that message, which is
+	 * always in the same panel: a reply is only listed when its parent is.
+	 */
+	private async renderQuote(
+		card: HTMLElement,
+		node: ThreadNode,
+		parent: ThreadNode,
+	): Promise<void> {
+		const file = this.app.vault.getFileByPath(parent.path);
+		const excerpt = file ? quoteExcerpt(bodyOf(await this.app.vault.cachedRead(file))) : "";
+		const who = parent.props.author !== "" ? parent.props.author : "unknown author";
+		const time = formatShortTime(parent.props.created);
+		const quote = this.focusable(
+			card.createEl("button", {
+				cls: "unistoria-quote",
+				attr: {
+					"aria-label": `In reply to the message from ${who}, ${time}${excerpt ? `: ${excerpt}` : ""}. Go to that message`,
+				},
+			}),
+			`panel:quote:${node.path}`,
+		);
+		quote.createSpan({
+			cls: "unistoria-quote-who",
+			text: parent.props.author !== "" ? `${parent.props.author}, ${time}` : time,
+		});
+		quote.createSpan({ cls: "unistoria-quote-text", text: excerpt === "" ? "(empty)" : excerpt });
+		quote.addEventListener("click", () => {
+			const target = [
+				...this.threadEl.querySelectorAll<HTMLElement>("article.unistoria-message"),
+			].find((el) => el.getAttribute("data-path") === parent.path);
+			if (!target) return;
+			target.scrollIntoView({ block: "center" });
+			target.tabIndex = -1;
+			target.focus({ preventScroll: true });
+			target.addClass("is-flash");
+			window.setTimeout(() => target.removeClass("is-flash"), 1600);
+		});
 	}
 
 	private renderActions(
 		card: HTMLElement,
 		node: ThreadNode,
 		topic: TopicSnapshot,
-		replies: number,
-		isCollapsed: boolean,
 		label: string,
+		place: Place,
 	): void {
 		const actions = card.createDiv({ cls: "unistoria-message-actions" });
 		const status = node.props.status;
+		// A root message is drawn twice while its thread is open; the prefix keeps focus keys apart.
+		const prefix = place === "main" ? "" : "panel:";
 
-		if (canReplyTo(status) && node.hiddenReason !== "orphan") {
+		// The message that starts the thread is answered with the panel's own button, not from its card.
+		if (place !== "thread-root" && canReplyTo(status) && node.hiddenReason !== "orphan") {
 			const reply = this.focusable(
 				actions.createEl("button", { text: "Reply", attr: { "aria-label": `Reply to ${label}` } }),
-				`reply:${node.path}`,
+				`${prefix}reply:${node.path}`,
 			);
 			reply.addEventListener("click", () => void this.newMessage(topic, node));
 		}
@@ -790,7 +993,7 @@ export class ConversationView extends ItemView {
 					text: status === "draft" ? "Open draft" : "Edit",
 					attr: { "aria-label": `${status === "draft" ? "Open draft of" : "Edit"} ${label}` },
 				}),
-				`edit:${node.path}`,
+				`${prefix}edit:${node.path}`,
 			);
 			edit.addEventListener(
 				"click",
@@ -802,22 +1005,29 @@ export class ConversationView extends ItemView {
 					),
 			);
 		}
-		if (replies > 0) {
-			const word = replies === 1 ? "reply" : "replies";
+		if (place === "main") {
+			const replies = threadReplies(node, this.showHidden);
+			const last = replies.at(-1);
+			const open = this.threadPath === node.path;
 			const toggle = this.focusable(
 				actions.createEl("button", {
-					cls: "unistoria-thread-toggle",
-					text: `${isCollapsed ? "Show" : "Hide"} ${replies} ${word}`,
-					attr: { "aria-expanded": String(!isCollapsed) },
+					cls: "unistoria-thread-open",
+					text: last
+						? `${describeReplies(replies.length)} · last ${formatShortTime(last.props.created)}`
+						: "Open thread",
+					attr: {
+						"aria-expanded": String(open),
+						"aria-controls": this.threadEl.id,
+						"aria-label": last
+							? `${describeReplies(replies.length)} in the thread of ${label.toLowerCase()}`
+							: `Open the thread of ${label.toLowerCase()}`,
+					},
 				}),
 				`thread:${node.path}`,
 			);
-			if (!isCollapsed) toggle.setAttribute("aria-controls", this.repliesId(node.path));
 			toggle.addEventListener("click", () => {
-				if (this.collapsed.has(node.path)) this.collapsed.delete(node.path);
-				else this.collapsed.add(node.path);
-				this.announce(`${replies} ${word} ${this.collapsed.has(node.path) ? "hidden" : "shown"}`);
-				this.scheduleRender(0, true);
+				if (this.threadPath === node.path) this.closeThread();
+				else this.showThread(node.path);
 			});
 		}
 
@@ -826,7 +1036,7 @@ export class ConversationView extends ItemView {
 				cls: "clickable-icon",
 				attr: { "aria-label": `More actions for ${label}`, "aria-haspopup": "menu" },
 			}),
-			`more:${node.path}`,
+			`${prefix}more:${node.path}`,
 		);
 		setIcon(more, "more-horizontal");
 		more.addEventListener("click", (event) => {
@@ -869,6 +1079,11 @@ export class ConversationView extends ItemView {
 		else this.announce(to === "removed" ? "Message removed" : "Message restored and published");
 	}
 
+	/**
+	 * Creates a draft and opens it in the composer. `parent` is the message being answered: the one
+	 * that starts a thread, or a reply in it. Either way the new reply is read in that thread's flat
+	 * list (ADR-008); a reply never gets a thread of its own.
+	 */
 	private async newMessage(topic: TopicSnapshot, parent: ThreadNode | null): Promise<void> {
 		const created = await this.deps.createDraft(topic.folderPath, parent ? parent.path : null);
 		if (!created.ok) {
@@ -876,17 +1091,22 @@ export class ConversationView extends ItemView {
 			return;
 		}
 		await this.deps.index.update([created.path]);
+		// The reply will appear in the thread panel, so the panel opens with the composer.
+		const root = parent ? threadRootOf(parent, topic.thread.nodes) : null;
+		if (root && this.threadPath !== root.path) {
+			this.threadPath = root.path;
+			this.scheduleRender(0, true);
+		}
+		const time = parent ? formatShortTime(parent.props.created) : "";
 		await this.openComposer(
 			created.path,
 			parent ? "reply" : "draft",
-			parent ? `Reply to the message from ${formatShortTime(parent.props.created)}` : "New message",
+			!parent
+				? "New message"
+				: parent === root
+					? `Reply in the thread from ${time}`
+					: `Reply to the message from ${time}`,
 		);
-	}
-
-	private repliesId(path: string): string {
-		let hash = 0;
-		for (const char of path) hash = (hash * 31 + char.charCodeAt(0)) | 0;
-		return `unistoria-replies-${(hash >>> 0).toString(36)}`;
 	}
 
 	private async openComposer(
@@ -926,4 +1146,8 @@ const ISSUE_LABELS: Record<string, string> = {
 
 function describeIssue(kind: string): string {
 	return ISSUE_LABELS[kind] ?? kind;
+}
+
+function describeReplies(count: number): string {
+	return `${count} ${count === 1 ? "reply" : "replies"}`;
 }

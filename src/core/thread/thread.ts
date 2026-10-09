@@ -62,7 +62,8 @@ export interface ThreadModel {
 
 const dirname = (path: string) => path.split("/").slice(0, -1).join("/");
 
-function compareNodes(a: ThreadNode, b: ThreadNode): number {
+/** Sibling order (ADR-001): `created`, then `message_id`, then path. */
+export function compareNodes(a: ThreadNode, b: ThreadNode): number {
 	const ta = a.props.createdMs ?? Number.POSITIVE_INFINITY;
 	const tb = b.props.createdMs ?? Number.POSITIVE_INFINITY;
 	if (ta !== tb) return ta < tb ? -1 : 1;

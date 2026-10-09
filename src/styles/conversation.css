@@ -1,42 +1,76 @@
-/* Conversation view: topic list, thread, and composer dock.
+/* Conversation view: topic list, topic page, thread panel, and composer dock.
    Colors and spacing come from Obsidian's variables so every theme and both modes keep working. */
 
 .view-content.unistoria-view {
+	--unistoria-nav-width: 248px;
+	--unistoria-rail-width: 44px;
 	display: grid;
-	grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+	grid-template-columns: var(--unistoria-nav-width) minmax(0, 1fr);
 	height: 100%;
 	padding: 0;
 	overflow: hidden;
 }
 
-/* The hidden topic list is removed from the grid, so the main pane must be the only column;
-   keeping a zero-width first column would squeeze the main pane into it. */
-.unistoria-view.is-nav-hidden {
+/* Collapsed, the topic list is a rail just wide enough for the button that brings it back. */
+.view-content.unistoria-view.is-nav-hidden {
+	grid-template-columns: var(--unistoria-rail-width) minmax(0, 1fr);
+}
+
+/* An expanded thread takes the whole view. The topic list leaves the grid, so the main pane must be
+   the only column; keeping a zero-width first column would squeeze the main pane into it. */
+.view-content.unistoria-view.is-thread-full {
 	grid-template-columns: minmax(0, 1fr);
 }
 
 /* --- topic list ---------------------------------------------------------------------------- */
 
 .unistoria-nav {
+	min-width: 0;
 	overflow-y: auto;
-	padding: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3) var(--size-4-3);
 	border-right: 1px solid var(--background-modifier-border);
 	background: var(--background-secondary);
 }
 
 .unistoria-view.is-nav-hidden .unistoria-nav {
+	padding-inline: 0;
+}
+
+.unistoria-view.is-thread-full .unistoria-nav {
 	display: none;
 }
 
-.unistoria-nav-bar {
+.unistoria-nav-head {
 	display: flex;
-	flex-wrap: wrap;
-	gap: var(--size-4-1);
-	margin-bottom: var(--size-4-3);
+	align-items: center;
+	gap: var(--size-4-2);
+	min-height: var(--input-height);
+	margin-bottom: var(--size-4-2);
+}
+
+.unistoria-view.is-nav-hidden .unistoria-nav-head {
+	justify-content: center;
+}
+
+.unistoria-nav-title {
+	font-weight: var(--font-semibold);
+}
+
+.unistoria-nav-bar {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
+}
+
+.unistoria-nav .unistoria-nav-bar button {
+	min-width: 0;
+	padding-inline: var(--size-4-2);
 }
 
 .unistoria-space-name {
-	margin: var(--size-4-3) 0 var(--size-4-1);
+	margin: var(--size-4-4) 0 var(--size-4-1);
+	padding-inline: var(--size-4-2);
 	color: var(--text-faint);
 	font-size: var(--font-ui-smaller);
 	text-transform: uppercase;
@@ -45,16 +79,22 @@
 }
 
 .unistoria-topic-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
 /* Obsidian styles every `button`, and themes add their own rules. The extra class in these selectors
-   makes the intended look win without `!important`. */
+   makes the intended look win without `!important`. Buttons center their content by default, which
+   put the state label of a one-line topic at a different offset from a two-line one; every row
+   starts at the left edge instead, and the label has a fixed width so the names line up. */
 .unistoria-nav .unistoria-topic-item {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
+	justify-content: flex-start;
 	gap: var(--size-4-2);
 	width: 100%;
 	height: auto;
@@ -63,6 +103,7 @@
 	background: transparent;
 	box-shadow: none;
 	color: var(--text-normal);
+	line-height: var(--line-height-tight);
 	text-align: left;
 	white-space: normal;
 	overflow-wrap: anywhere;
@@ -73,31 +114,24 @@
 	background: var(--background-modifier-hover);
 }
 
-.unistoria-main .unistoria-list-toggle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--size-4-1);
-	min-width: max-content;
-	height: var(--input-height);
-	padding: 0 var(--size-4-2);
-	flex: none;
-}
-
-.unistoria-list-toggle-icon {
-	display: inline-flex;
-	width: var(--icon-s, 16px);
-	height: var(--icon-s, 16px);
-}
-
 .unistoria-nav .unistoria-topic-item[aria-current="true"] {
 	font-weight: var(--font-semibold);
 }
 
+.unistoria-topic-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding-block: var(--size-2-1);
+}
+
 .unistoria-state {
 	flex: none;
-	padding: 0 var(--size-4-1);
+	min-width: 3.75em;
+	padding: var(--size-2-1) var(--size-4-1);
 	border-radius: var(--radius-s);
 	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+	text-align: center;
 	color: var(--text-muted);
 	background: var(--background-modifier-border);
 }
@@ -119,24 +153,37 @@
 	min-height: 0;
 }
 
-.unistoria-scroll {
+/* The topic page and the thread panel, side by side above the composer dock. It is a size container
+   so the panel can take the whole width when the pane is too narrow for two columns. */
+.unistoria-body {
+	display: flex;
 	flex: 1 1 auto;
+	min-width: 0;
 	min-height: 0;
-	overflow-y: auto;
-	padding: var(--size-4-4) var(--size-4-6);
+	container-type: inline-size;
 }
 
+.unistoria-scroll {
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--size-4-6) var(--size-4-8);
+}
+
+.unistoria-view.is-thread-full .unistoria-scroll {
+	display: none;
+}
+
+/* The title has its own line; the controls sit under it, and the content starts after a clear gap. */
 .unistoria-topic-header {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--size-4-2);
-	margin-bottom: var(--size-4-3);
+	margin-bottom: var(--size-4-6);
+	padding-bottom: var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .unistoria-topic-header h2 {
-	flex: 1 1 12em;
-	margin: 0;
+	margin: 0 0 var(--size-4-3);
 	overflow-wrap: anywhere;
 }
 
@@ -161,7 +208,7 @@
 }
 
 .unistoria-topic-context {
-	margin-bottom: var(--size-4-3);
+	margin-bottom: var(--size-4-6);
 	padding: var(--size-4-2) var(--size-4-3);
 	border-left: 3px solid var(--background-modifier-border);
 }
@@ -181,19 +228,13 @@
 
 /* --- thread -------------------------------------------------------------------------------- */
 
-/* The thread is a nested list: reset list styling, then indent replies. */
+/* The topic page lists the messages that start a thread; the panel lists the replies of one. */
 .unistoria-thread,
-.unistoria-children,
+.unistoria-replies,
 .unistoria-node {
 	list-style: none;
 	margin: 0;
 	padding: 0;
-}
-
-.unistoria-children {
-	margin-left: var(--unistoria-thread-indent, var(--size-4-6));
-	padding-left: var(--size-4-3);
-	border-left: 2px solid var(--background-modifier-border);
 }
 
 /* Announcements for screen readers; present in the accessibility tree, invisible on screen. */
@@ -209,11 +250,16 @@
 }
 
 .unistoria-message {
-	margin: var(--size-4-2) 0;
-	padding: var(--size-4-2) var(--size-4-3);
+	margin: var(--size-4-3) 0;
+	padding: var(--size-4-3) var(--size-4-4);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	background: var(--background-primary);
+}
+
+/* The message whose thread is open in the panel. */
+.unistoria-message.is-thread-open {
+	border-color: var(--interactive-accent);
 }
 
 .unistoria-message.is-draft,
@@ -243,8 +289,51 @@
 	background: var(--background-modifier-border);
 }
 
+/* The message a reply answers, quoted on one line above it. It is a button that jumps there. */
+.unistoria-message .unistoria-quote {
+	display: flex;
+	align-items: baseline;
+	justify-content: flex-start;
+	gap: var(--size-4-2);
+	width: 100%;
+	height: auto;
+	margin-top: var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-2);
+	border-left: 3px solid var(--background-modifier-border);
+	border-radius: 0 var(--radius-s) var(--radius-s) 0;
+	background: var(--background-secondary);
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	text-align: left;
+}
+
+.unistoria-message .unistoria-quote:hover {
+	border-left-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.unistoria-quote-who {
+	flex: none;
+	font-weight: var(--font-semibold);
+}
+
+.unistoria-quote-text {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* The message a quote jumped to, marked for a moment. */
+.unistoria-message.is-flash {
+	border-color: var(--interactive-accent);
+	background: var(--background-secondary);
+}
+
 .unistoria-message-body {
-	margin: var(--size-4-1) 0;
+	margin: var(--size-4-3) 0 var(--size-4-2);
 	overflow-wrap: anywhere;
 }
 
@@ -270,6 +359,10 @@
 	box-shadow: none;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
+}
+
+.unistoria-message-actions .unistoria-thread-open {
+	color: var(--text-accent);
 }
 
 .unistoria-message-actions button:not(.clickable-icon):hover {
@@ -368,13 +461,11 @@ body .unistoria-composer-editor .hover-popover {
 .unistoria-message-body h1,
 .unistoria-topic-context h1 {
 	font-size: var(--font-ui-large, 1.25em);
-	margin: 0 0 var(--size-4-1);
 }
 
 .unistoria-message-body h2,
 .unistoria-topic-context h2 {
 	font-size: var(--font-ui-medium, 1.1em);
-	margin: 0 0 var(--size-4-1);
 }
 
 .unistoria-message-body h3,
@@ -386,7 +477,17 @@ body .unistoria-composer-editor .hover-popover {
 .unistoria-topic-context h5,
 .unistoria-topic-context h6 {
 	font-size: var(--font-ui-small, 1em);
-	margin: 0 0 var(--size-4-1);
+}
+
+/* A heading keeps a gap to the content under it (a callout's title sits on its top border, so a
+   tight heading collided with it) and a larger one to what comes before. */
+.unistoria-message-body :is(h1, h2, h3, h4, h5, h6),
+.unistoria-topic-context :is(h1, h2, h3, h4, h5, h6) {
+	margin: var(--size-4-4) 0 var(--size-4-3);
+}
+
+.unistoria-message-content > :is(h1, h2, h3, h4, h5, h6):first-child {
+	margin-top: 0;
 }
 
 .unistoria-message-body > p,
@@ -470,4 +571,101 @@ body .unistoria-composer-editor .hover-popover {
 .unistoria-markdown input.task-list-item-checkbox:disabled {
 	cursor: default;
 	opacity: 0.6;
+}
+
+/* --- thread panel ---------------------------------------------------------------------------- */
+
+/* One message and its replies, read on their own beside the topic page (ADR-008). */
+.unistoria-thread-panel {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 min(460px, 50%);
+	min-width: 0;
+	min-height: 0;
+	border-left: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+}
+
+.unistoria-view.is-thread-full .unistoria-thread-panel {
+	flex: 1 1 auto;
+	border-left: none;
+}
+
+/* Too narrow for two readable columns: the open thread covers the topic page. */
+@container (max-width: 680px) {
+	.unistoria-view.is-thread-open .unistoria-scroll {
+		display: none;
+	}
+
+	.unistoria-view.is-thread-open .unistoria-thread-panel {
+		flex: 1 1 auto;
+		border-left: none;
+	}
+}
+
+.unistoria-thread-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	flex: none;
+	padding: var(--size-4-2) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.unistoria-thread-title {
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-2);
+	min-width: 0;
+}
+
+.unistoria-thread-title h3 {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+}
+
+.unistoria-thread-crumb {
+	overflow: hidden;
+	color: var(--text-muted);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.unistoria-thread-sep {
+	color: var(--text-faint);
+}
+
+.unistoria-thread-tools {
+	display: flex;
+	flex: none;
+	gap: var(--size-4-1);
+}
+
+.unistoria-thread-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--size-4-3) var(--size-4-4) var(--size-4-6);
+}
+
+.unistoria-view.is-thread-full .unistoria-thread-scroll {
+	padding: var(--size-4-6) var(--size-4-8);
+}
+
+/* The divider between the message that starts the thread and its replies. */
+.unistoria-thread-count {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	margin: var(--size-4-4) 0 var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.unistoria-thread-count::after {
+	content: "";
+	flex: 1 1 auto;
+	height: 1px;
+	background: var(--background-modifier-border);
 }
