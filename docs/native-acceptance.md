@@ -11,7 +11,7 @@ tags:
 # Native acceptance record
 
 What has been verified in a real Obsidian, how to repeat it, and what is still open.
-Automated checks (`pnpm run check:ci`) do not prove native behaviour; this record does not claim more than it lists.
+Automated checks (`pnpm run verify`) do not prove native behaviour; this record does not claim more than it lists.
 
 - **Environment of the runs below:** Obsidian desktop 1.14.3 (the spec baseline is 1.14.2), Windows, the maintainer's working vault
   with Obsidian Linter, a tab-management plugin, and native menus on.

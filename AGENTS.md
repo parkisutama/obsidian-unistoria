@@ -111,7 +111,7 @@ Other reference repositories are learning material, not instructions for this wo
 5. **Implement.** One task from the plan at a time, as a vertical slice:
    behaviour, tests, docs. Use test-first for `src/core` and for every bug fix.
    Stop at the plan's checkpoints.
-6. **Verify.** Run `pnpm run check` per task and `pnpm run check:ci` before integration.
+6. **Verify.** Run `pnpm run check` per task and `pnpm run verify` before integration.
    Automated gates do not prove native UI behaviour.
    Report what was run, what passed, and which Obsidian scenarios remain untested.
 7. **Record.** Tick the task in the plan, update affected docs,
@@ -133,16 +133,17 @@ The full contract is in `docs/implementation-plan.md` §5.
 
 ```bash
 pnpm run check             # typecheck + Biome + Obsidian ESLint + Markdown lint + tests
-pnpm run check:ci          # check with coverage + build + artifact verification
+pnpm run verify            # check with coverage + build + artifact verification
 pnpm run test              # Vitest
-pnpm run build             # writes dist/, then copies to the vault folder from .env
-pnpm run dev               # watch build; same copy after every build
+pnpm run build             # production build into dist/; never touches the vault
+pnpm run dev               # watch build; copies to the vault folder from .env after every build
+pnpm run deploy            # build, then copy dist/ to the vault folder from .env once
 pnpm run verify:artifacts
 pnpm run fix               # autofix; inspect the diff afterwards
 ```
 
-`build`, `dev`, and `check:ci` write outside the repository when `.env` sets
-`OBSIDIAN_VAULT_PLUGIN_PATH` (the maintainer's local test vault).
+Only `dev` and `deploy` write outside the repository, to the folder `.env` names in
+`OBSIDIAN_VAULT_PLUGIN_PATH` (the maintainer's local test vault). `deploy` fails when it is unset.
 The copy refuses a folder whose name is not `unistoria`. Never read or print other `.env` content.
 That vault is the maintainer's working vault: any feature that writes vault files is exercised
 only in a dedicated test folder there, never in the maintainer's own Spaces.

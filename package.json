@@ -11,6 +11,7 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "node esbuild.config.mjs production",
+		"deploy": "pnpm run build && node scripts/vault-copy.mjs",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check",
 		"lint:obsidian": "eslint src manifest.json LICENSE",
@@ -23,7 +24,7 @@
 		"version:sync": "node scripts/sync-version.mjs",
 		"native": "node scripts/native/run.mjs",
 		"check": "pnpm run typecheck && pnpm run lint && pnpm run lint:obsidian && pnpm run lint:md && pnpm run test",
-		"check:ci": "pnpm run typecheck && pnpm run lint && pnpm run lint:obsidian && pnpm run lint:md && pnpm run test:coverage && pnpm run build && pnpm run verify:artifacts"
+		"verify": "pnpm run typecheck && pnpm run lint && pnpm run lint:obsidian && pnpm run lint:md && pnpm run test:coverage && pnpm run build && pnpm run verify:artifacts"
 	},
 	"keywords": [
 		"obsidian",

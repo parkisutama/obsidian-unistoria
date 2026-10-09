@@ -10,8 +10,9 @@ const DIST_DIR = "dist";
 const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
 const banner = buildLicenseBanner(manifest.version);
 
-// Completes dist/ with the manifest, then copies the artifacts into the vault plugin folder named
-// by OBSIDIAN_VAULT_PLUGIN_PATH in .env. Without that variable (CI, fresh clone) the copy is skipped.
+// Completes dist/ with the manifest. In watch mode it then copies the artifacts into the vault plugin
+// folder named by OBSIDIAN_VAULT_PLUGIN_PATH in .env; without that variable the copy is skipped.
+// A production build never writes outside the repository (use `pnpm run deploy` for that).
 const publishProblems = [];
 const publishPlugin = {
 	name: "publish-artifacts",
@@ -22,6 +23,7 @@ const publishPlugin = {
 
 			mkdirSync(DIST_DIR, { recursive: true });
 			copyFileSync("manifest.json", `${DIST_DIR}/manifest.json`);
+			if (prod) return;
 
 			const pluginDir = readVaultPluginPath();
 			if (!pluginDir) {

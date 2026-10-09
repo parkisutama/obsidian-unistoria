@@ -34,7 +34,7 @@ OBSIDIAN_VAULT_PLUGIN_PATH=E:\MyVault\.obsidian\plugins\unistoria
 ```
 
 `pnpm run dev` rebuilds on every change and copies `main.js`, `manifest.json`, and `styles.css` there.
-`pnpm run build` does the same once.
+`pnpm run deploy` builds and copies once; `pnpm run build` alone never writes to the vault.
 The copy is refused when the folder name is not `unistoria` or the parent `plugins` folder is missing.
 Without `.env`, the copy is skipped.
 Reload the plugin in Obsidian after a rebuild.
@@ -44,10 +44,11 @@ Reload the plugin in Obsidian after a rebuild.
 | Command | Purpose |
 | --- | --- |
 | `pnpm run check` | typecheck, Biome, Obsidian ESLint, Markdown lint, tests |
-| `pnpm run check:ci` | `check` with coverage, then build and artifact verification |
+| `pnpm run verify` | `check` with coverage, then build and artifact verification |
 | `pnpm run test` | Vitest |
-| `pnpm run build` | production build into `dist/` |
-| `pnpm run dev` | watch build |
+| `pnpm run build` | production build into `dist/`; never touches the vault |
+| `pnpm run dev` | watch build; copies to the vault after every build |
+| `pnpm run deploy` | build, then copy `dist/` to the vault once |
 | `pnpm run fix` | autofix Biome and Markdown issues; inspect the diff afterwards |
 
 The full contract, including write effects, is in the [implementation plan](docs/implementation-plan.md).
@@ -63,9 +64,9 @@ The full contract, including write effects, is in the [implementation plan](docs
 ## Releasing
 
 1. `pnpm run version:sync -- 0.2.0` writes the version to `package.json`, `manifest.json`, and `versions.json`.
-2. `pnpm run check:ci`, then commit.
+2. `pnpm run verify`, then commit.
 3. Tag the commit with the same version and no `v` prefix (`0.2.0`) and push the tag.
-   The Release workflow checks the tag against the three files, runs `check:ci`, and publishes `main.js`, `manifest.json`, `styles.css`, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
+   The Release workflow checks the tag against the three files, runs `verify`, and publishes `main.js`, `manifest.json`, `styles.css`, `LICENSE`, and `THIRD_PARTY_NOTICES.md`.
 
 Tagging and pushing are done by the maintainer.
 
