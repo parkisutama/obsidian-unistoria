@@ -37,7 +37,7 @@ jobs:
           test "${GITHUB_REF_NAME}" = "${pkg}"
           test -n "${mapped}"
 
-      - run: pnpm run check:ci
+      - run: pnpm run verify
 
       - name: Create the GitHub release
         env:

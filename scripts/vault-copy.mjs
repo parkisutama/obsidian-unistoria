@@ -1,5 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
 export const VAULT_PATH_KEY = "OBSIDIAN_VAULT_PLUGIN_PATH";
@@ -40,3 +41,37 @@ export function copyToVault({ distDir, pluginDir, pluginId }) {
 	}
 	return destination;
 }
+
+/**
+ * Copies the build to the vault plugin folder named in `.env`. Unlike the dev watcher, which skips
+ * the copy when no folder is configured, an explicit deploy without one is an error.
+ */
+export function deployToVault({ envPath = ".env", distDir = "dist", pluginId }) {
+	const pluginDir = readVaultPluginPath(envPath);
+	if (!pluginDir) {
+		throw new Error(`${VAULT_PATH_KEY} is not set in ${envPath}; there is no vault to deploy to.`);
+	}
+	return copyToVault({ distDir, pluginDir, pluginId });
+}
+
+/**
+ * The `deploy` command: returns the process exit code and reports through `log`.
+ * @param {{ rootDir?: string, log?: { log(line: string): unknown, error(line: string): unknown } }} [options]
+ */
+export function runDeploy({ rootDir = process.cwd(), log = console } = {}) {
+	try {
+		const { id } = JSON.parse(readFileSync(path.join(rootDir, "manifest.json"), "utf8"));
+		const destination = deployToVault({
+			envPath: path.join(rootDir, ".env"),
+			distDir: path.join(rootDir, "dist"),
+			pluginId: id,
+		});
+		log.log(`✓ Deployed to ${destination}`);
+		return 0;
+	} catch (error) {
+		log.error(`✗ ${error.message}`);
+		return 1;
+	}
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(runDeploy());

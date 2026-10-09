@@ -48,7 +48,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		console.log(
 			`Version ${version} (minimum Obsidian ${minAppVersion}) written to package.json, manifest.json, versions.json.`,
 		);
-		console.log(`Next: pnpm run check:ci, commit, then tag "${version}" (no "v" prefix).`);
+		console.log(`Next: pnpm run verify, commit, then tag "${version}" (no "v" prefix).`);
 	} catch (error) {
 		console.error(error.message);
 		process.exit(1);
