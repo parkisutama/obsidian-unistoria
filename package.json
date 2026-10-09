@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-unistoria",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"description": "Folder-scoped threaded conversations stored as one Markdown file per message.",
 	"private": true,
 	"type": "module",

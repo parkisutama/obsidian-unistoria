@@ -21,6 +21,7 @@ See [the implementation plan](docs/implementation-plan.md) for progress.
 
 - Desktop only, validated against Obsidian 1.14.2 and 1.14.3.
 - License: GPL-3.0-only. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- Versions follow Semantic Versioning and start at 0.0.1. Before 1.0.0 anything may change between releases, including the files Unistoria writes into a vault; the [changelog](CHANGELOG.md) says when it does.
 
 ## Using Unistoria
 

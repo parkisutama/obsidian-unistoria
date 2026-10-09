@@ -1,7 +1,7 @@
 {
 	"id": "unistoria",
 	"name": "Unistoria",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"minAppVersion": "1.14.4",
 	"description": "Folder-scoped threaded conversations stored as one Markdown file per message.",
 	"author": "Parkis Utama",
