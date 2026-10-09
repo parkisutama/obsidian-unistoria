@@ -1,7 +1,7 @@
 ---
 title: Unistoria Product Specification
 created: 2026-10-01T21:45:05+07:00
-modified: 2026-10-02T00:30:00+07:00
+modified: 2026-10-08T10:00:00+07:00
 tags:
   - unistoria
   - product-specification
@@ -56,7 +56,8 @@ Plain Markdown can store discussion, but manually creating files and maintaining
 - **Space:** A user-selected parent folder containing related topics.
 - **Topic / Issue:** One discussion context represented by a folder and a Folder Note. “Issue” is a possible UI label; the model is not limited to bug reports.
 - **Message:** One Markdown file in a topic's `messages/` folder.
-- **Reply thread:** A message plus its direct and nested replies. Replies do not create new topic folders.
+- **Reply thread:** A message with `parent: ""` plus every reply below it. Replies do not create new topic folders.
+  The interface reads a thread as one flat list ([ADR-008](decisions/ADR-008-thread-panel.md)); the files hold the tree of who answered whom.
 - **Folder Note:** The Markdown note with the same basename as its topic folder; it stores topic metadata and acts as the conversation entry point.
 
 ## 6. User stories
@@ -240,12 +241,19 @@ Creation must be recoverable and avoid partial structures. On failure, report wh
 
 - Space/topic navigation shows topics and their open/closed state. Browsing is required for the first release so a topic can be reopened later.
 - `closed` is a label in v1: it does not block replying, editing, or publishing, and it does not move any file.
-- Main pane displays the topic title/context and a chronological conversation.
+- The control that shows or hides the topic list is part of the topic list; hidden, the list is a narrow rail holding that control.
+- Main pane displays the topic title, its controls on a separate line, the context, and the messages that start a thread, in chronological order.
 - Messages render Markdown using Obsidian's Markdown rendering so standard Markdown and supported Obsidian embeds/links behave consistently where feasible.
-- Each published message has **Reply** and **Edit** as the primary actions in v1. Message lifecycle controls may be in a secondary menu.
-- A message with replies shows an inline thread preview/count and can expand/collapse its reply subtree.
-- Replies are visually nested under their parent, with clear author/time metadata.
-- A composer opens for a new topic message or as a reply composer anchored to the selected parent.
+- Each published message has **Reply** and **Edit** as the primary actions in v1.
+  Message lifecycle controls may be in a secondary menu.
+- Each message on the topic page shows a thread control with the reply count and the time of the last reply,
+  or an action to open the thread when there are no replies.
+- The thread opens in a panel beside the topic page: the message in full, then every reply below it as one flat list
+  in conversation order, with clear author/time metadata. The panel can be expanded to the whole view and closed.
+- A reply can be answered, by any number of replies, but cannot be opened as a thread of its own.
+  A reply to a reply is listed in the same flat list with a one-line quote of the message it answers;
+  selecting the quote moves to that message ([ADR-008](decisions/ADR-008-thread-panel.md)).
+- A composer opens for a new topic message or as a reply composer for the message being answered.
 - Editing reuses/adapts the Quick Preview editing experience from `parkisutama/obsidian-unimian` under GPL-3.0-only, preserving copyright, license notices, and attribution for adapted source/helpers/styles. Prefer Obsidian's native Markdown editing behavior over a custom rich-text editor.
 - The plugin targets desktop only. Validate the editor in the main window and desktop popout windows; if detached-leaf embedding is unavailable, provide an explicit action opening the file in a normal native Markdown editor. Editing adapted code does not remove its GPL obligations.
 
@@ -279,8 +287,11 @@ Creation must be recoverable and avoid partial structures. On failure, report wh
 
 ### P0 — Threaded conversation and writing
 
-- Given a published message, when the user selects Reply, then a draft reply is created with the correct parent and topic links and appears in that message's thread after publish.
-- Nested replies render under their direct parent and can be expanded/collapsed without creating topic folders.
+- Given a published message, when the user selects Reply, then a draft reply is created whose `parent` is that message, with the correct topic link, and it appears in the thread that message belongs to after publish.
+- Given a message on the topic page, when the user opens its thread, then the message and all of its shown replies, at any depth, are listed in the thread panel in conversation order, without creating topic folders.
+- Given an open thread, then it can be expanded to the whole view, returned beside the topic page, and closed.
+- Given a reply whose `parent` is another reply, then it is listed in the thread at the top of its parent chain with a quote of the message it answers, and no integrity problem is reported for it.
+- A reply offers no way to open a thread of its own.
 - Message body is composed and edited as Markdown, and rendered with Obsidian Markdown behavior.
 - Primary per-message actions are Reply and Edit.
 

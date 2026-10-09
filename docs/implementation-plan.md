@@ -294,13 +294,30 @@ Kolom percakapan dipusatkan dengan lebar baca nyaman.
 Pesan dan konteks topik yang panjang menampilkan excerpt (tinggi maksimal 320 px, dengan margin 96 px agar teks yang hanya sedikit lebih panjang tidak dipotong) dan tombol Read more / Show less; pilihan pembaca bertahan antar-render.
 Workflow release (`release.yml`) dan `pnpm run version:sync` sudah ada; tag, push, dan rilis menunggu perintah maintainer.
 
+## 10a. Fase 5 — Revamp tampilan percakapan
+
+Permintaan maintainer 2026-10-08; keputusan di [ADR-008](decisions/ADR-008-thread-panel.md).
+
+| Selesai | ID | Task | Spec | Acceptance | Verifikasi |
+| --- | --- | --- | --- | --- | --- |
+| [x] | U1 | `core/thread/display`: `threadReplies` (balasan datar urut waktu) dan `threadRootOf` | §5, P0 threaded | Balasan pada kedalaman berapa pun terdaftar datar; akar thread tidak pernah ditebak | Vitest (`tests/core/display.test.ts`) |
+| [x] | U2 | Daftar topik: tombol tampil/sembunyi di dalam daftar, rel sempit saat tersembunyi, lebar tetap, label status dan nama sejajar | §9.2 | Tombol ada di kedua keadaan; nama topik satu baris dan dua baris sejajar | Native: `h3-accessibility.js` |
+| [x] | U3 | Header topik: judul di barisnya sendiri, kontrol di bawahnya, jarak ke konteks dan pesan; jarak heading di dalam kartu | §9.2 | Judul tidak menempel pada konten; heading tidak bertabrakan dengan callout | Native: `h3-accessibility.js` |
+| [x] | U4 | Panel thread kanan: halaman topik hanya memuat pesan pembuka thread dengan ringkasan balasan; panel memuat pesan dan balasan datar; perluas ke seluruh view; tutup; Reply selalu ke pembuka thread | §9.2, P0 threaded, ADR-008 | Kriteria P0 threaded yang direvisi | Native: `h3-accessibility.js`, `h4-performance.js` |
+| [x] | U5 | Balasan bisa dibalas: Reply di tiap balasan membuat balasan dengan `parent` ke balasan itu; tampil datar dengan kutipan satu baris (`core/markdown/quote`) yang melompat ke pesan asal; balasan tetap tidak punya thread sendiri | §9.2, P0 threaded, ADR-008 (amandemen) | Beberapa balasan boleh menjawab balasan yang sama; kutipan tidak pernah disimpan | Vitest (`tests/core/quote.test.ts`); native: `h3-accessibility.js` |
+
+**Checkpoint F.** Maintainer melihat tampilan di vault kerja.
+
+**Status Fase 5 (2026-10-08):** U1–U5 selesai dan diuji native di Obsidian jendela utama (hasil di [native-acceptance.md](native-acceptance.md)).
+Belum diuji: pane sempit, popout (H2 belum diulang), dan tema lain.
+
 ## 11. Pemetaan requirement ke task
 
 | Requirement spec | Task |
 | --- | --- |
 | P0 — Create structure and first draft | F3, F7, C3, C6 |
 | P0 — Markdown files and portable relationships | S1, F1, F2, F6, H1 |
-| P0 — Threaded conversation and writing | F4, C2, C3, C4, C5 |
+| P0 — Threaded conversation and writing | F4, C2, C3, C4, C5, U1, U4, U5 |
 | P0 — Lifecycle | F5, F8, C6, C7 |
 | P1 — Topic navigation and metadata | C1, C9 |
 | §11 Error and edge cases | F4, F6, C8, H1, H5 |

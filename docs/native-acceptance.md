@@ -1,7 +1,7 @@
 ---
 title: Native Acceptance Record
 created: 2026-10-02T09:00:00+07:00
-modified: 2026-10-02T09:00:00+07:00
+modified: 2026-10-08T10:00:00+07:00
 tags:
   - unistoria
   - acceptance
@@ -55,7 +55,8 @@ Menus are native in some vaults and cannot be driven from a script; the scripts 
 | --- | --- |
 | H1 rename and move matrix | 20 of 20 checks pass. Relationships follow renames made through Obsidian's API; a rename that bypasses the updater leaves the reply as a visible orphan and never adopts the renamed file |
 | H2 popout and lifecycle | 17 of 17 checks pass. Four embedded editors opened, four detached |
-| H3 accessibility | All checks pass: named controls, list and landmark structure, `aria-expanded` and `aria-controls` on thread toggles, live-region announcements, focus kept across re-renders, focus moved into the composer and returned to the opener |
+| Thread panel and quoted replies (ADR-008), run 2026-10-08 on the same environment | `h3-accessibility.js`, rewritten for the panel: 45 of 45 checks pass. The topic list holds its own show and hide button and becomes a 44 px rail (from 248 px); the title has its own line above the controls; the topic page lists only thread starters; the thread control exposes the reply count, `aria-expanded`, and `aria-controls`; the panel opens beside the page (460 px), lists replies at any depth as one flat list in time order, expands to the whole view and names its topic, and closes with focus returning to the thread control; a reply to a reply shows a quote of the message it answers and selecting it moves there; every reply has Reply and none has a thread; Reply on a thread starter creates a draft whose parent is that message, Reply on a reply one whose parent is that reply. `h4-performance.js`: 34 and 134 thread starters render in about 70 ms and 250 ms, a thread panel in about 110 to 330 ms. `h5-editor-pane.js`, `h6-markdown.js`, and `h7-excerpt.js` pass unchanged (H7's late-growth check was skipped because the window was hidden) |
+| H3 accessibility (layout before ADR-008) | All checks pass: named controls, list and landmark structure, `aria-expanded` and `aria-controls` on thread toggles, live-region announcements, focus kept across re-renders, focus moved into the composer and returned to the opener |
 | H4 performance | About 1.1 ms per message to render: 100 messages in about 105 ms, 400 in about 450 ms; index rebuild under 15 ms. Editing a draft does not re-render the thread |
 | ADR-007 editor pane (`h5-editor-pane.js`) | 18 of 18 checks pass: the pane is a real leaf with an active editor, an editor command (toggle bold) works in it, publish and close save and remove the pane, closing the pane by hand closes the dock, and in a popout the pane opens in the popout window. H2 and H3 pin the embedded mode, which stays as an option |
 | Rendered Markdown (`h6-markdown.js`) | 17 checks pass: callout, quote, and code render through Obsidian's renderer with the reading-view classes; the conversation is a centered column; internal links open relative to the message; hovering fires Page Preview's `hover-link` event with Unistoria registered as a hover source and the view as hover parent; tags open a search for the tag; checkboxes change one line of the message or the Folder Note, a stale click changes nothing, and checkboxes that cannot be mapped to the source (an embedded note with its own task) are read-only |
@@ -70,6 +71,11 @@ Menus are native in some vaults and cannot be driven from a script; the scripts 
 
 ## Open items
 
+- **Thread panel in other conditions (ADR-008):** the scripted run used one theme and a wide pane.
+  The narrow-pane rule (the open thread covers the topic page below 680 px), a popout window (H2 was not repeated after the change),
+  and the look of the rail, the header spacing, and the quote in other themes have not been checked.
+- **Scripts and other Unistoria tabs:** the scripts select elements in the whole document, so a second open Unistoria tab makes
+  H4, H5, and H6 read the wrong view and fail. Close other Unistoria tabs before running them.
 - **Scroll and focus in a real session:** the scripts check structure and focus targets, not the felt experience of typing and tabbing.
   A keyboard-only walkthrough by a person is still needed.
 - **Updater disabled in settings:** *Automatically update internal links* turned off, then renaming in the file explorer.

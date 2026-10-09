@@ -11,7 +11,10 @@ embedded composer, and hardening (rename/move matrix, popout, accessibility, per
 What remains before a release is listed in `docs/native-acceptance.md` (repeat on Obsidian 1.14.2, a person's
 keyboard walkthrough, other themes, the sibling-ordering decision). Progress is tracked in
 `docs/implementation-plan.md`. The composer writes in an ordinary editor pane by default (ADR-007, setting `composerMode`);
-the embedded editor (ADR-006) is the alternative. Native checks: `pnpm run native -- <vault> scripts/native/<script>.js`;
+the embedded editor (ADR-006) is the alternative.
+The topic page lists thread starters; replies are read as a flat list in a side panel, and a reply to a reply
+is shown with a quote of its parent, never nested (ADR-008, plan tasks U1 to U5).
+Native scripts select elements in the whole document: close other Unistoria tabs before running them. Native checks: `pnpm run native -- <vault> scripts/native/<script>.js`;
 they create and remove a `_unistoria-test/` folder in that vault.
 Obsidian-bound code (`src/ui`, `src/platform/editor`, `obsidian-index.ts`, `SettingsTab.ts`, `main.ts`)
 is excluded from the coverage floor and is verified in a real vault.

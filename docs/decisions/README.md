@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 created: 2026-10-01T22:20:00+07:00
-modified: 2026-10-02T00:25:00+07:00
+modified: 2026-10-08T10:00:00+07:00
 tags:
   - unistoria
   - adr
@@ -25,6 +25,7 @@ Spike notes (`spike-*.md`) hold the raw evidence an ADR cites.
 | [ADR-005](ADR-005-mutation-and-preservation.md) | Mutation and preservation | Accepted |
 | [ADR-006](ADR-006-embedded-editor.md) | Embedded editor | Accepted; superseded in part by ADR-007 |
 | [ADR-007](ADR-007-editor-pane.md) | Editor pane for composing | Accepted |
+| [ADR-008](ADR-008-thread-panel.md) | Thread panel and flat threads | Accepted |
 
 | Spike | Subject |
 | --- | --- |

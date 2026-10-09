@@ -29,7 +29,12 @@ See [the implementation plan](docs/implementation-plan.md) for progress.
    Unistoria creates the topic folder, a Folder Note with the same name, a `messages/` folder, and a first draft.
 3. Write the draft in the editor pane that opens next to the conversation. It is Obsidian's normal editor, with all your plugins and hotkeys.
    Then choose **Publish** in the bar under the conversation. (Settings → Unistoria → Editor can embed the editor below the conversation instead.)
-4. Use **Reply** on any published message. The reply is a new file whose `parent` links to that message.
+4. The topic page lists the messages that start a thread. Use **Reply** on one, or its thread control
+   (the reply count, or **Open thread**), to read it with its replies in a panel on the right.
+   The panel can be expanded to the whole view for focused reading, and closed again.
+   A reply is a new file whose `parent` links to the message it answers. You can also **Reply** to a reply:
+   it stays in the same flat list, with a one-line quote of the message it answers that jumps there when selected.
+   Replies do not start threads of their own.
    **Edit** changes a published message in place; **Remove** hides a message and everything below it without deleting any file, and **Restore and publish** brings it back.
 5. Drafts you close stay under **Drafts** and can be opened again. A draft is unpublished, not private.
 6. Messages are rendered like reading view: callouts, quotes, code, embeds, and math work.
