@@ -10,6 +10,8 @@ name: Release
 on:
   push:
     branches: [main]
+  # Rebuilds the Release PR on demand, for example after closing a stale one.
+  workflow_dispatch:
 
 permissions:
   contents: read
