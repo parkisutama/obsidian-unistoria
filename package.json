@@ -47,7 +47,7 @@
 		"eslint": "^9.39.5",
 		"eslint-plugin-obsidianmd": "^0.4.2",
 		"happy-dom": "^20.14.5",
-		"obsidian": "1.13.1",
+		"obsidian": "1.14.4",
 		"rumdl": "^0.2.78",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.71.0",

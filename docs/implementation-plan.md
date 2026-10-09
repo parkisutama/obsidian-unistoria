@@ -77,7 +77,7 @@ usulan menjadi final ketika maintainer menyetujuinya dan ADR terkait berstatus A
 | E-05 | UI runtime | **Diputuskan.** DOM Obsidian biasa lebih dulu. Jika framework ternyata dibutuhkan: Preact; React hanya bila Preact tidak memungkinkan |
 | E-06 | Dependency runtime | Target nol dependency runtime; generator ID memakai `crypto.getRandomValues` |
 | E-07 | Kualitas | **Diputuskan: Biome.** Biome untuk lint dan format; ESLint hanya menjalankan aturan `eslint-plugin-obsidianmd`; rumdl untuk Markdown; Vitest + happy-dom |
-| E-08 | Versi minimum | `minAppVersion` `1.14.2` (satu-satunya baseline tervalidasi); diturunkan hanya dengan bukti |
+| E-08 | Versi minimum | `minAppVersion` `1.14.4` (stable terbaru, keputusan maintainer 2026-10-09; acceptance native terakhir di 1.14.2/1.14.3); diturunkan hanya dengan bukti |
 | E-09 | Commit | Conventional Commits sebagai konvensi tertulis; Husky/commitlint ditunda sampai DX-FU-04 diputuskan |
 | E-10 | Lokasi dokumen | Spec dipindah ke `docs/unistoria-spec.md`; ADR di `docs/decisions/` |
 | E-11 | CSS | **Diputuskan.** CSS biasa di `src/styles/`, digabung esbuild lewat `@import`; tanpa Sass atau preprocessor |
@@ -92,9 +92,9 @@ E-08, E-09, dan E-10 diterapkan sesuai rekomendasi tanpa jawaban eksplisit; kore
 | `typescript` | `6.0.3` | 7.0 belum didukung `typescript-eslint` (peer `<6.1.0`) |
 | `eslint` | `9.39.5` | `eslint-plugin-obsidianmd` belum menerima ESLint 10 pada dependensinya |
 | `@eslint/json` | `0.14.0` | Versi yang diminta peer `eslint-plugin-obsidianmd` |
-| `eslint-plugin-obsidianmd` | `0.4.2` | Peer `obsidian` 1.8.7 diizinkan ke 1.13.1 di `pnpm-workspace.yaml` |
+| `eslint-plugin-obsidianmd` | `0.4.2` | Peer `obsidian` 1.8.7 diizinkan ke 1.14.4 di `pnpm-workspace.yaml` |
 | `@biomejs/biome` | `2.5.14` | 2.5.15 masih di dalam jendela `minimumReleaseAge` pnpm saat install |
-| `obsidian` | `1.13.1` | Typings terbaru di npm; baseline uji tetap aplikasi 1.14.2 |
+| `obsidian` | `1.14.4` | Typings sama dengan `minAppVersion` |
 | `esbuild` | `0.28.2` | Terbaru |
 | `vitest`, `@vitest/coverage-v8` | `5.0.3` | Terbaru |
 | `happy-dom` | `20.14.5` | Terbaru |
