@@ -6,6 +6,7 @@
 
 import type { App, TFile, TFolder } from "obsidian";
 import type { VaultIO } from "../../core/creation/execute";
+import { assertInsideVault } from "../../core/identity/vault-path";
 
 const isFolder = (entry: unknown): entry is TFolder =>
 	typeof entry === "object" && entry !== null && "children" in entry;
@@ -19,10 +20,10 @@ export function createVaultIO(app: App): VaultIO {
 			return isFolder(found) ? "folder" : "file";
 		},
 		async createFolder(path) {
-			await app.vault.createFolder(path);
+			await app.vault.createFolder(assertInsideVault(path));
 		},
 		async createFile(path, content) {
-			await app.vault.create(path, content);
+			await app.vault.create(assertInsideVault(path), content);
 		},
 		async readFile(path) {
 			const found = entry(path);
@@ -43,6 +44,8 @@ export function createVaultIO(app: App): VaultIO {
 
 /** Creates a folder and any missing ancestors; an existing folder is left untouched. */
 export async function ensureFolder(app: App, path: string): Promise<void> {
+	// Checked up front so a bad path creates none of its leading folders.
+	assertInsideVault(path);
 	const io = createVaultIO(app);
 	let current = "";
 	for (const part of path.split("/").filter((p) => p !== "")) {
