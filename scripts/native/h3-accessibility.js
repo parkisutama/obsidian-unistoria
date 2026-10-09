@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // H3: keyboard and screen-reader support, checked from the DOM and from focus behaviour.
 // Real key presses cannot be sent from a script, so this verifies what makes them work: native
 // focusable controls with names, structure and states, focus kept across re-renders, focus moved

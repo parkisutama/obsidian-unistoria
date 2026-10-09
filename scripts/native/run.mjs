@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // Runs a native acceptance script inside a running Obsidian through its CLI and prints the checks.
 //
 //   node scripts/native/run.mjs <vault name> <script file> [more script files]

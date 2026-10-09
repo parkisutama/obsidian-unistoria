@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // Long messages are shown as an excerpt with a "Read more" button. Short ones are shown in full.
 // The choice to expand survives re-renders, keyboard focus stays on the button, and the Folder
 // Note's context is shortened the same way.

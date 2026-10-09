@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // ADR-007: writing in an ordinary editor pane split off the conversation (the default composer
 // mode). What matters is that this is a real workspace leaf: the active editor exists, editor
 // commands work on it, and nothing is left behind in the layout when the composer closes.

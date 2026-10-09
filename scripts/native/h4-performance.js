@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // H4: render time for a large topic. Creates a topic with many messages in a branching thread
 // (depth up to 12), then times a full render of the topic page and of its largest thread in the
 // panel (ADR-008), and counts the DOM nodes.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // H1: rename and move matrix. Every case ends in one of two states: the relationship follows the
 // file (Obsidian's link updater), or it is reported as broken. A message is never attached to a
 // different parent or topic.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
 // H2 and H5: the conversation view and its composer in a popout window, the popout closing while the
 // composer is open, and a draft deleted or renamed while it is open. Every embedded editor that is
 // opened must be detached exactly once (no orphan leaf), and nothing deleted may be recreated.

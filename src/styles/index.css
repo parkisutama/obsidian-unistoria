@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 Parkis Utama */
+
 /* Entry stylesheet. esbuild resolves the imports below, in this order, into dist/styles.css.
    Plain CSS only: use Obsidian's CSS variables and prefix every class with `unistoria-`. */
 
