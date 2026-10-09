@@ -182,3 +182,22 @@ describe("runDeploy", () => {
 		expect(existsSync(path.join(pluginDir, "main.js"))).toBe(true);
 	});
 });
+
+describe("verifyArtifacts and versions.json", () => {
+	const writeVersions = (versions: Record<string, string>) =>
+		writeFileSync(path.join(workDir, "versions.json"), JSON.stringify(versions));
+
+	it("accepts a release that inherits the minimum app version of an earlier entry", () => {
+		const distDir = writeDist();
+		writeVersions({ "0.0.1": "1.14.2" });
+		expect(verifyArtifacts({ rootDir: workDir, distDir })).toEqual([]);
+	});
+
+	it("reports a raised minimum app version that has no versions.json entry", () => {
+		const distDir = writeDist();
+		writeVersions({ "0.0.1": "1.14.0" });
+		expect(verifyArtifacts({ rootDir: workDir, distDir })).toEqual([
+			expect.stringMatching(/versions\.json assigns minimum app version 1\.14\.0 to 0\.1\.0/),
+		]);
+	});
+});

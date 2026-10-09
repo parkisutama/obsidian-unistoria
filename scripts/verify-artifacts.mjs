@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { requiredNoticeFragments } from "./license-banner.mjs";
 import { BUILD_ARTIFACTS } from "./vault-copy.mjs";
+import { versionsMapProblem } from "./versions-map.mjs";
 
 export const PLUGIN_ID = "unistoria";
 const LICENSED_ARTIFACTS = ["main.js", "styles.css"];
@@ -46,11 +47,8 @@ export function verifyArtifacts({
 			`manifest.json: version ${manifest.version} differs from package.json ${pkg.version}`,
 		);
 	}
-	if (versions[manifest.version] !== manifest.minAppVersion) {
-		problems.push(
-			`versions.json: no entry mapping ${manifest.version} to ${manifest.minAppVersion}`,
-		);
-	}
+	const versionsProblem = versionsMapProblem(versions, manifest);
+	if (versionsProblem !== null) problems.push(versionsProblem);
 	return problems;
 }
 
