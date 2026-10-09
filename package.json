@@ -19,6 +19,7 @@
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"verify:artifacts": "node scripts/verify-artifacts.mjs",
+		"conformance": "node --test conformance/standard.test.mjs",
 		"version:sync": "node scripts/sync-version.mjs",
 		"native": "node scripts/native/run.mjs",
 		"check": "pnpm run typecheck && pnpm run lint && pnpm run lint:obsidian && pnpm run lint:md && pnpm run test",
