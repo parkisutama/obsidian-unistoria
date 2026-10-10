@@ -3,6 +3,7 @@
 
 import { type App, PluginSettingTab, Setting } from "obsidian";
 import type UnistoriaPlugin from "../main";
+import { ChangeSpaceFolderModal } from "../ui/modals/ChangeSpaceFolderModal";
 import { mergeSettings } from "./settings";
 
 export class UnistoriaSettingTab extends PluginSettingTab {
@@ -66,11 +67,24 @@ export class UnistoriaSettingTab extends PluginSettingTab {
 			containerEl.createEl("p", { text: "No spaces yet. Use the Create space command." });
 		}
 		for (const space of this.plugin.prefs.spaces) {
+			const missing = this.app.vault.getFolderByPath(space) === null;
 			new Setting(containerEl)
 				.setName(space)
 				.setDesc(
-					"Forgetting a space removes it from this list only. Its folder and files are not touched.",
+					missing
+						? "Folder not found. If you renamed or moved it, use Change folder to point this space at it again."
+						: "Change folder renames or moves the folder. Forgetting a space removes it from this list only; its folder and files are not touched.",
 				)
+				.addButton((button) => {
+					button.setButtonText("Change folder").onClick(() => {
+						new ChangeSpaceFolderModal(this.app, {
+							space,
+							relocate: (to) => this.plugin.relocateSpace(space, to),
+							onDone: () => this.display(),
+						}).open();
+					});
+					if (missing) button.setCta();
+				})
 				.addButton((button) =>
 					button.setButtonText("Forget").onClick(async () => {
 						this.plugin.prefs = mergeSettings({

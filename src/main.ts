@@ -13,6 +13,7 @@ import {
 	setMessageStatus,
 	setTopicStatus,
 } from "./platform/vault/mutations";
+import { type RelocateResult, relocateSpaceFolder } from "./platform/vault/spaces";
 import { toggleBodyTask } from "./platform/vault/tasks";
 import { UnistoriaSettingTab } from "./settings/SettingsTab";
 import {
@@ -96,6 +97,13 @@ export default class UnistoriaPlugin extends Plugin {
 				});
 			}),
 		);
+	}
+
+	/** Renames or moves the folder of a Space, or points the Space at a folder that already exists. */
+	async relocateSpace(space: string, to: string): Promise<RelocateResult> {
+		const result = await relocateSpaceFolder(this.app, space, to);
+		if (result.ok) await this.followSpace(space, result.path);
+		return result;
 	}
 
 	private async followSpace(oldPath: string, newPath: string): Promise<boolean> {
