@@ -1,7 +1,7 @@
 ---
 title: Rencana Implementasi Unistoria
 created: 2026-10-01T21:50:44+07:00
-modified: 2026-10-02T09:00:00+07:00
+modified: 2026-10-09T09:00:00+07:00
 tags:
   - unistoria
   - implementation-plan
@@ -311,6 +311,18 @@ Permintaan maintainer 2026-10-08; keputusan di [ADR-008](decisions/ADR-008-threa
 **Status Fase 5 (2026-10-08):** U1–U5 selesai dan diuji native di Obsidian jendela utama (hasil di [native-acceptance.md](native-acceptance.md)).
 Belum diuji: pane sempit, popout (H2 belum diulang), dan tema lain.
 
+## 10b. Fase 6 — Pengelolaan Space
+
+Permintaan maintainer 2026-10-09. Tidak mengubah key settings, jadi tanpa ADR baru; memenuhi K-07.
+
+| Selesai | ID | Task | Spec | Acceptance | Verifikasi |
+| --- | --- | --- | --- | --- | --- |
+| [x] | M1 | Pointer Space mengikuti folder: `withSpaceMoved` di settings dan listener `rename` vault memperbarui `spaces` dan `defaultSpaceRoot`, termasuk saat folder induk yang diganti nama | §12, K-07 | Pointer tidak pernah tertinggal setelah rename lewat Obsidian; sibling berprefiks sama tidak ikut berubah | Vitest (`tests/settings.test.ts`); native belum |
+| [x] | M2 | Settings: tombol "Change folder" per Space. Path baru memindahkan folder lewat `fileManager.renameFile` (`platform/vault/spaces`); folder yang sudah ada hanya diarahkan ulang tanpa memindah file; Space yang foldernya hilang ditandai | §12, §9.3 | Tidak pernah menimpa atau menggabung folder; path ber-`..`, file, dan subfolder dirinya sendiri ditolak tanpa menulis | Vitest (`tests/space-folder.test.ts`); native belum |
+
+**Status Fase 6 (2026-10-09):** M1–M2 lulus `pnpm run verify`. Belum diuji di Obsidian:
+dialog Change folder, rename folder Space di file explorer, dan resolusi link `topic`/`parent` setelah Space dipindah lewat tombol.
+
 ## 11. Pemetaan requirement ke task
 
 | Requirement spec | Task |
@@ -321,7 +333,7 @@ Belum diuji: pane sempit, popout (H2 belum diulang), dan tema lain.
 | P0 — Lifecycle | F5, F8, C6, C7 |
 | P1 — Topic navigation and metadata | C1, C9 |
 | §11 Error and edge cases | F4, F6, C8, H1, H5 |
-| §12 Settings and commands | F7, C1, C9 |
+| §12 Settings and commands | F7, C1, C9, M1, M2 |
 | §13 Privacy and collaboration boundary | K-02, C6, H5 |
 | §17 Definition of done | Checkpoint D, H1–H6 |
 
