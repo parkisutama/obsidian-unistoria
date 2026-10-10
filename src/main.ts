@@ -13,6 +13,7 @@ import {
 	setMessageStatus,
 	setTopicStatus,
 } from "./platform/vault/mutations";
+import { type RelocateResult, relocateSpaceFolder } from "./platform/vault/spaces";
 import { toggleBodyTask } from "./platform/vault/tasks";
 import { UnistoriaSettingTab } from "./settings/SettingsTab";
 import {
@@ -20,6 +21,7 @@ import {
 	mergeSettings,
 	type UnistoriaSettings,
 	withSpace,
+	withSpaceMoved,
 } from "./settings/settings";
 import { CreateSpaceModal } from "./ui/modals/CreateSpaceModal";
 import { CreateTopicModal } from "./ui/modals/CreateTopicModal";
@@ -83,7 +85,33 @@ export default class UnistoriaPlugin extends Plugin {
 		});
 		this.addRibbonIcon("messages-square", "Open topics", () => void this.activateView());
 		this.addRibbonIcon("message-square-plus", "Create topic", () => this.openCreateTopic());
-		this.addSettingTab(new UnistoriaSettingTab(this.app, this));
+		const settingTab = new UnistoriaSettingTab(this.app, this);
+		this.addSettingTab(settingTab);
+
+		// A Space is a pointer to a folder: keep it on the folder when that folder is renamed or moved.
+		this.registerEvent(
+			this.app.vault.on("rename", (entry, oldPath) => {
+				if (!("children" in entry)) return;
+				void this.followSpace(oldPath, entry.path).then((changed) => {
+					if (changed && settingTab.containerEl.isConnected) settingTab.display();
+				});
+			}),
+		);
+	}
+
+	/** Renames or moves the folder of a Space, or points the Space at a folder that already exists. */
+	async relocateSpace(space: string, to: string): Promise<RelocateResult> {
+		const result = await relocateSpaceFolder(this.app, space, to);
+		if (result.ok) await this.followSpace(space, result.path);
+		return result;
+	}
+
+	private async followSpace(oldPath: string, newPath: string): Promise<boolean> {
+		const next = withSpaceMoved(this.prefs, oldPath, newPath);
+		if (next === this.prefs) return false;
+		this.prefs = next;
+		await this.saveSettings();
+		return true;
 	}
 
 	/** Changes a message status within its topic; the view calls this for Publish, Remove, Restore. */

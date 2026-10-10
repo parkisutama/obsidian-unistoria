@@ -57,6 +57,29 @@ export function withSpace(settings: UnistoriaSettings, path: string): UnistoriaS
 	return { ...settings, spaces: [...settings.spaces, space] };
 }
 
+/**
+ * Returns a copy whose pointers follow a folder from `oldPath` to `newPath`: a Space at that
+ * folder or below it, and the default Space. Nothing in the vault is read or written.
+ */
+export function withSpaceMoved(
+	settings: UnistoriaSettings,
+	oldPath: string,
+	newPath: string,
+): UnistoriaSettings {
+	const from = clean(oldPath);
+	const to = clean(newPath);
+	if (from === "" || to === "" || from === to) return settings;
+	const follow = (path: string) =>
+		path === from ? to : path.startsWith(`${from}/`) ? to + path.slice(from.length) : path;
+	const spaces = [...new Set(settings.spaces.map(follow))];
+	const defaultSpaceRoot = follow(settings.defaultSpaceRoot);
+	const unchanged =
+		defaultSpaceRoot === settings.defaultSpaceRoot &&
+		spaces.length === settings.spaces.length &&
+		spaces.every((space, i) => space === settings.spaces[i]);
+	return unchanged ? settings : { ...settings, spaces, defaultSpaceRoot };
+}
+
 /** Space folders offered when creating a topic, default first, without duplicates. */
 export function spaceChoices(settings: UnistoriaSettings): string[] {
 	const list = settings.defaultSpaceRoot

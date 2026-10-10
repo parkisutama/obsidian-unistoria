@@ -60,6 +60,20 @@ export function fakeApp() {
 				const parent = entries.get(parentOf(f.path));
 				if (parent?.children) parent.children = parent.children.filter((c) => c.path !== f.path);
 			},
+			// Moves a file or a whole folder, as renaming in the file explorer does.
+			renameFile: async (f: Entry, to: string) => {
+				if (entries.has(to)) throw new Error("Destination file already exists!");
+				const from = f.path;
+				const oldParent = entries.get(parentOf(from));
+				if (oldParent?.children) oldParent.children = oldParent.children.filter((c) => c !== f);
+				const moved = [...entries.values()].filter((e) => e === f || e.path.startsWith(`${from}/`));
+				for (const entry of moved) entries.delete(entry.path);
+				for (const entry of moved) {
+					entry.path = to + entry.path.slice(from.length);
+					entries.set(entry.path, entry);
+				}
+				entries.get(parentOf(to))?.children?.push(f);
+			},
 			processFrontMatter: async (f: Entry, mutate: (fm: Record<string, unknown>) => void) => {
 				if (state.processFails) throw new Error("disk error");
 				const fm = { ...(f.frontmatter ?? {}) };

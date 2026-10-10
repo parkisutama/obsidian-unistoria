@@ -2,7 +2,13 @@
 // Copyright (C) 2026 Parkis Utama
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, mergeSettings, spaceChoices, withSpace } from "../src/settings/settings";
+import {
+	DEFAULT_SETTINGS,
+	mergeSettings,
+	spaceChoices,
+	withSpace,
+	withSpaceMoved,
+} from "../src/settings/settings";
 
 describe("mergeSettings", () => {
 	it("falls back to defaults for missing or malformed data", () => {
@@ -50,6 +56,46 @@ describe("withSpace", () => {
 		expect(once.spaces).toEqual(["Spaces/A"]);
 		expect(withSpace(once, "Spaces/A")).toBe(once);
 		expect(withSpace(once, "")).toBe(once);
+	});
+});
+
+describe("withSpaceMoved", () => {
+	const settings = {
+		...DEFAULT_SETTINGS,
+		defaultSpaceRoot: "Spaces/A",
+		spaces: ["Spaces/A", "Spaces/AB", "Other"],
+	};
+
+	it("repoints a space and the default that names it", () => {
+		expect(withSpaceMoved(settings, "Spaces/A", "Work/Alpha")).toEqual({
+			...settings,
+			defaultSpaceRoot: "Work/Alpha",
+			spaces: ["Work/Alpha", "Spaces/AB", "Other"],
+		});
+	});
+
+	it("follows a renamed ancestor folder without touching a sibling that shares the prefix", () => {
+		expect(withSpaceMoved(settings, "Spaces", "Rooms").spaces).toEqual([
+			"Rooms/A",
+			"Rooms/AB",
+			"Other",
+		]);
+		expect(withSpaceMoved(settings, "Spaces/A", "Spaces/Z").spaces).toEqual([
+			"Spaces/Z",
+			"Spaces/AB",
+			"Other",
+		]);
+	});
+
+	it("merges into a space that is already registered", () => {
+		expect(withSpaceMoved(settings, "Spaces/A", "Other").spaces).toEqual(["Other", "Spaces/AB"]);
+	});
+
+	it("returns the same settings when nothing points at the old path", () => {
+		expect(withSpaceMoved(settings, "Elsewhere", "X")).toBe(settings);
+		expect(withSpaceMoved(settings, "Spaces/A", "Spaces/A")).toBe(settings);
+		expect(withSpaceMoved(settings, "", "X")).toBe(settings);
+		expect(withSpaceMoved(settings, "Other", "")).toBe(settings);
 	});
 });
 
